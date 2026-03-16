@@ -175,32 +175,6 @@
       </link>
     </model>
 
-    <!-- Interior wall - horizontal -->
-    <model name="wall_horizontal">
-      <static>true</static>
-      <link name="wall_link">
-        <pose>0 0 1.5 0 0 0</pose>
-        <collision name="wall_collision">
-          <geometry>
-            <box>
-              <size>0.15 14 3</size>
-            </box>
-          </geometry>
-        </collision>
-        <visual name="wall_visual">
-          <geometry>
-            <box>
-              <size>0.15 14 3</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0.95 0.95 0.9 1</ambient>
-            <diffuse>0.95 0.95 0.9 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
     <!-- Interior wall - vertical -->
     <model name="wall_vertical">
       <static>true</static>

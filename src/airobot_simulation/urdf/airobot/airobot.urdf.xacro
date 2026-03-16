@@ -43,7 +43,8 @@
 			right_wheel="right_wheel_joint"
 			wheel_separation="${wheel_separation}"
 			wheel_diameter="${wheel_diameter}"
-			update_rate="50"/>
+			update_rate="50"
+			base_frame_id="base_footprint"/>
 	</xacro:macro>
 
 	<xacro:arg name="base_length" default="0.18"/>
