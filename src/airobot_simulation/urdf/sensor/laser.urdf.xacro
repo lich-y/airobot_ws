@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="laser_macro">
+	<xacro:macro name="laser" params="name parent xyz">
+		<xacro:property name="pole_radius" value="0.01"/>
+		<xacro:property name="pole_height" value="0.10"/>
+		<xacro:property name="pole_mass" value="0.08"/>
+		<xacro:property name="laser_radius" value="0.04"/>
+		<xacro:property name="laser_height" value="0.05"/>
+		<xacro:property name="laser_mass" value="0.2"/>
+
+		<link name="${name}_mount_link">
+			<visual>
+				<origin xyz="0 0 ${pole_height / 2.0}" rpy="0 0 0"/>
+				<geometry>
+					<cylinder radius="${pole_radius}" length="${pole_height}"/>
+				</geometry>
+				<material name="gray">
+					<color rgba="0.55 0.55 0.55 1.0"/>
+				</material>
+			</visual>
+
+			<collision>
+				<origin xyz="0 0 ${pole_height / 2.0}" rpy="0 0 0"/>
+				<geometry>
+					<cylinder radius="${pole_radius}" length="${pole_height}"/>
+				</geometry>
+			</collision>
+
+			<inertial>
+				<origin xyz="0 0 ${pole_height / 2.0}" rpy="0 0 0"/>
+				<mass value="${pole_mass}"/>
+				<inertia ixx="8.0e-5" ixy="0.0" ixz="0.0" iyy="8.0e-5" iyz="0.0" izz="4.0e-6"/>
+			</inertial>
+		</link>
+
+		<link name="${name}_link">
+			<visual>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
+				<geometry>
+					<cylinder radius="${laser_radius}" length="${laser_height}"/>
+				</geometry>
+				<material name="green">
+					<color rgba="0.15 0.7 0.35 1.0"/>
+				</material>
+			</visual>
+
+			<collision>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
+				<geometry>
+					<cylinder radius="${laser_radius}" length="${laser_height}"/>
+				</geometry>
+			</collision>
+
+			<inertial>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
+				<mass value="${laser_mass}"/>
+				<inertia ixx="8.0e-5" ixy="0.0" ixz="0.0" iyy="8.0e-5" iyz="0.0" izz="8.0e-5"/>
+			</inertial>
+		</link>
+
+		<joint name="${name}_mount_joint" type="fixed">
+			<parent link="${parent}"/>
+			<child link="${name}_mount_link"/>
+			<origin xyz="${xyz}" rpy="0 0 0"/>
+		</joint>
+
+		<joint name="${name}_joint" type="fixed">
+			<parent link="${name}_mount_link"/>
+			<child link="${name}_link"/>
+			<origin xyz="0 0 ${pole_height + laser_height / 2.0}" rpy="0 0 0"/>
+		</joint>
+	</xacro:macro>
+</robot>

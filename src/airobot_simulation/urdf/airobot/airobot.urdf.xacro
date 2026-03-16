@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="airobot">
+	<xacro:include filename="$(find airobot_simulation)/urdf/actuator/caster.urdf.xacro"/>
+	<xacro:include filename="$(find airobot_simulation)/urdf/actuator/wheel.urdf.xacro"/>
+	<xacro:include filename="$(find airobot_simulation)/urdf/airobot/base.urdf.xacro"/>
+	<xacro:include filename="$(find airobot_simulation)/urdf/sensor/camera.urdf.xacro"/>
+	<xacro:include filename="$(find airobot_simulation)/urdf/sensor/imu.urdf.xacro"/>
+	<xacro:include filename="$(find airobot_simulation)/urdf/sensor/laser.urdf.xacro"/>
+	<xacro:include filename="$(find airobot_simulation)/plugins/diff_drive.urdf.xacro"/>
+
+	<!-- 计算差速驱动参数 -->
+	<!-- 轮间距: 左右轮 y 坐标之差的绝对值 -->
+	<!-- left_wheel y=0.18, right_wheel y=-0.18, separation = 0.36 -->
+	<xacro:property name="wheel_separation" value="0.36"/>
+	<!-- 轮直径: wheel radius * 2 = 0.08 * 2 = 0.16 -->
+	<xacro:property name="wheel_diameter" value="0.16"/>
+
+	<xacro:macro name="airobot" params="base_length base_radius left_wheel_xyz right_wheel_xyz rear_caster_xyz front_caster_xyz camera_xyz imu_xyz laser_xyz">
+		<link name="base_footprint"/>
+
+		<xacro:base name="base_link" length="${base_length}" radius="${base_radius}"/>
+
+		<joint name="base_footprint_joint" type="fixed">
+			<parent link="base_footprint"/>
+			<child link="base_link"/>
+			<origin xyz="0 0 ${0.08 + base_length / 2.0}" rpy="0 0 0"/>
+		</joint>
+
+		<xacro:wheel name="left_wheel" parent="base_link" xyz="${left_wheel_xyz}"/>
+		<xacro:wheel name="right_wheel" parent="base_link" xyz="${right_wheel_xyz}"/>
+		<xacro:caster name="rear_caster" parent="base_link" xyz="${rear_caster_xyz}"/>
+		<xacro:caster name="front_caster" parent="base_link" xyz="${front_caster_xyz}"/>
+
+		<xacro:camera name="camera" parent="base_link" xyz="${camera_xyz}"/>
+		<xacro:imu name="imu" parent="base_link" xyz="${imu_xyz}"/>
+		<xacro:laser name="top_laser" parent="base_link" xyz="${laser_xyz}"/>
+
+		<!-- 差速驱动插件 -->
+		<xacro:diff_drive
+			name="diff_drive"
+			parent="base_link"
+			left_wheel="left_wheel_joint"
+			right_wheel="right_wheel_joint"
+			wheel_separation="${wheel_separation}"
+			wheel_diameter="${wheel_diameter}"
+			update_rate="50"/>
+	</xacro:macro>
+
+	<xacro:arg name="base_length" default="0.18"/>
+	<xacro:arg name="base_radius" default="0.16"/>
+	<xacro:arg name="left_wheel_xyz" default="0.0 0.18 -0.09"/>
+	<xacro:arg name="right_wheel_xyz" default="0.0 -0.18 -0.09"/>
+	<xacro:arg name="rear_caster_xyz" default="-0.11 0.0 -0.13"/>
+	<xacro:arg name="front_caster_xyz" default="0.11 0.0 -0.13"/>
+	<xacro:arg name="camera_xyz" default="0.12 0.0 0.06"/>
+	<xacro:arg name="imu_xyz" default="0.0 0.0 0.03"/>
+	<xacro:arg name="laser_xyz" default="0.0 0.0 0.125"/>
+
+	<xacro:airobot
+			base_length="$(arg base_length)"
+			base_radius="$(arg base_radius)"
+			left_wheel_xyz="$(arg left_wheel_xyz)"
+			right_wheel_xyz="$(arg right_wheel_xyz)"
+			rear_caster_xyz="$(arg rear_caster_xyz)"
+			front_caster_xyz="$(arg front_caster_xyz)"
+			camera_xyz="$(arg camera_xyz)"
+			imu_xyz="$(arg imu_xyz)"
+			laser_xyz="$(arg laser_xyz)"/>
+</robot>
+

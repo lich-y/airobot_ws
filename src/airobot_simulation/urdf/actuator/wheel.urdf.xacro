@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="wheel_macro">
+	<xacro:macro name="wheel" params="name parent xyz">
+		<xacro:property name="wheel_radius" value="0.08"/>
+		<xacro:property name="wheel_width" value="0.04"/>
+		<xacro:property name="wheel_mass" value="0.8"/>
+		<xacro:property name="wheel_ixx" value="${wheel_mass * (3.0 * wheel_radius * wheel_radius + wheel_width * wheel_width) / 12.0}"/>
+		<xacro:property name="wheel_izz" value="${0.5 * wheel_mass * wheel_radius * wheel_radius}"/>
+
+		<link name="${name}_link">
+			<visual>
+				<origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
+				<geometry>
+					<cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+				</geometry>
+				<material name="dark_gray">
+					<color rgba="0.2 0.2 0.2 1.0"/>
+				</material>
+			</visual>
+
+			<collision>
+				<origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
+				<geometry>
+					<cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+				</geometry>
+			</collision>
+
+			<inertial>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
+				<mass value="${wheel_mass}"/>
+				<inertia ixx="${wheel_ixx}" ixy="0.0" ixz="0.0" iyy="${wheel_izz}" iyz="0.0" izz="${wheel_ixx}"/>
+			</inertial>
+		</link>
+
+		<joint name="${name}_joint" type="continuous">
+			<parent link="${parent}"/>
+			<child link="${name}_link"/>
+			<origin xyz="${xyz}" rpy="0 0 0"/>
+			<axis xyz="0 1 0"/>
+		</joint>
+	</xacro:macro>
+</robot>

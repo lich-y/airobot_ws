@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="base_macro">
+	<xacro:macro name="base" params="name length radius">
+		<xacro:property name="base_mass" value="8.0"/>
+		<xacro:property name="base_ixx" value="${base_mass * (3.0 * radius * radius + length * length) / 12.0}"/>
+		<xacro:property name="base_izz" value="${0.5 * base_mass * radius * radius}"/>
+
+		<link name="${name}">
+			<visual>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
+				<geometry>
+					<cylinder radius="${radius}" length="${length}"/>
+				</geometry>
+				<material name="blue">
+					<color rgba="0.2 0.45 0.85 1.0"/>
+				</material>
+			</visual>
+
+			<collision>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
+				<geometry>
+					<cylinder radius="${radius}" length="${length}"/>
+				</geometry>
+			</collision>
+
+			<inertial>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
+				<mass value="${base_mass}"/>
+				<inertia ixx="${base_ixx}" ixy="0.0" ixz="0.0" iyy="${base_ixx}" iyz="0.0" izz="${base_izz}"/>
+			</inertial>
+		</link>
+	</xacro:macro>
+</robot>

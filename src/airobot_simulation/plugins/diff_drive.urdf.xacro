@@ -1,0 +1,125 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="diff_drive_plugin">
+
+	<!--
+	差速驱动插件 (Differential Drive Plugin) 用于 Gazebo 仿真
+	
+	参数说明:
+	- name: 插件名称
+	- parent: 父链接名称
+	- left_wheel: 左轮关节名称
+	- right_wheel: 右轮关节名称
+	- publish_tf: 是否发布 TF (默认: true)
+	- publish_odom: 是否发布里程计 (默认: true)
+	- publish_wheel_tf: 是否发布轮子 TF (默认: true)
+	- update_rate: 更新频率 (Hz, 默认: 50)
+	- wheel_separation: 左右轮间距 (米)
+	- wheel_diameter: 轮子直径 (米)
+	- max_wheel_linear_speed: 最大线速度 (m/s)
+	- max_wheel_angular_speed: 最大角速度 (rad/s)
+	- wheel_acceleration: 轮子加速度 (m/s^2)
+	- command_timeout: 命令超时时间 (秒)
+	- pose_covariance_diagonal: 位姿协方差对角线 [x, y, z, roll, pitch, yaw]
+	- twist_covariance_diagonal: 速度协方差对角线 [x, y, z, roll, pitch, yaw]
+	- base_frame_id: 基座坐标系ID (默认: base_link)
+	- odom_frame_id: 里程计坐标系ID (默认: odom)
+	- world_frame: 世界坐标系ID (默认: odom)
+	-->
+
+	<!--
+	完整版差速驱动插件宏
+	包含所有可配置参数
+	-->
+	<xacro:macro name="diff_drive" params="name parent left_wheel right_wheel
+		publish_tf:=true publish_odom:=true publish_wheel_tf:=true
+		update_rate:=50
+		wheel_separation wheel_diameter
+		max_wheel_linear_speed:=2.0 max_wheel_angular_speed:=4.0
+		wheel_acceleration:=0.0 command_timeout:=10.0
+		pose_covariance_diag:='0.001 0.001 1000000.0 1000000.0 1000000.0 0.001'
+		twist_covariance_diag:='0.001 0.001 1000000.0 1000000.0 1000000.0 0.001'
+		base_frame_id:='base_link' odom_frame_id:='odom' world_frame:='odom'">
+
+		<!-- Gazebo 差速驱动插件 -->
+		<gazebo>
+			<plugin name="${name}" filename="libgazebo_ros_diff_drive.so">
+				<!-- ROS 参数 -->
+				<ros>
+					<namespace>/</namespace>
+					<remapping>~/cmd_vel:=cmd_vel</remapping>
+					<remapping>~/odom:=odom</remapping>
+				</ros>
+
+				<!-- 更新频率 (Hz) -->
+				<update_rate>${update_rate}</update_rate>
+
+				<!-- 左右轮关节名称 -->
+				<left_joint>${left_wheel}</left_joint>
+				<right_joint>${right_wheel}</right_joint>
+
+				<!-- 运动学参数 -->
+				<!-- 左右轮间距 (米) -->
+				<wheel_separation>${wheel_separation}</wheel_separation>
+				<!-- 轮子直径 (米) -->
+				<wheel_diameter>${wheel_diameter}</wheel_diameter>
+
+				<!-- 速度限制 -->
+				<!-- 最大线速度 (m/s) -->
+				<max_wheel_linear_speed>${max_wheel_linear_speed}</max_wheel_linear_speed>
+				<!-- 最大角速度 (rad/s) -->
+				<max_wheel_angular_speed>${max_wheel_angular_speed}</max_wheel_angular_speed>
+				<!-- 轮子加速度 (m/s^2) -->
+				<wheel_acceleration>${wheel_acceleration}</wheel_acceleration>
+
+				<!-- 命令超时时间 (秒) -->
+				<command_timeout>${command_timeout}</command_timeout>
+
+				<!-- 发布者设置 -->
+				<!-- 是否发布里程计 -->
+				<publish_odom>${publish_odom}</publish_odom>
+				<!-- 是否发布里程计 TF -->
+				<publish_odom_tf>${publish_tf}</publish_odom_tf>
+				<!-- 是否发布轮子 TF -->
+				<publish_wheel_tf>${publish_wheel_tf}</publish_wheel_tf>
+
+				<!-- 坐标系 ID -->
+				<!-- 里程计坐标系 -->
+				<odom_frame_id>${odom_frame_id}</odom_frame_id>
+				<!-- 基座坐标系 -->
+				<base_frame_id>${base_frame_id}</base_frame_id>
+				<!-- 世界坐标系 -->
+				<world_frame>${world_frame}</world_frame>
+
+				<!-- 协方差矩阵 -->
+				<!-- 位姿协方差对角线 -->
+				<pose_covariance_diagonal>${pose_covariance_diag}</pose_covariance_diagonal>
+				<!-- 速度协方差对角线 -->
+				<twist_covariance_diagonal>${twist_covariance_diag}</twist_covariance_diagonal>
+			</plugin>
+		</gazebo>
+
+	</xacro:macro>
+
+	<!--
+	简化版差速驱动插件宏
+	只包含必要参数，其他使用默认值
+	-->
+	<xacro:macro name="diff_drive_simple" params="name parent left_wheel right_wheel wheel_separation wheel_diameter
+		publish_tf:=true publish_odom:=true publish_wheel_tf:=true update_rate:=50">
+
+		<!-- 调用完整版宏，使用默认参数 -->
+		<xacro:diff_drive
+			name="${name}"
+			parent="${parent}"
+			left_wheel="${left_wheel}"
+			right_wheel="${right_wheel}"
+			publish_tf="${publish_tf}"
+			publish_odom="${publish_odom}"
+			publish_wheel_tf="${publish_wheel_tf}"
+			update_rate="${update_rate}"
+			wheel_separation="${wheel_separation}"
+			wheel_diameter="${wheel_diameter}"/>
+
+	</xacro:macro>
+
+</robot>
