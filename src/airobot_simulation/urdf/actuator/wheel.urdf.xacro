@@ -37,6 +37,13 @@
 			<child link="${name}_link"/>
 			<origin xyz="${xyz}" rpy="0 0 0"/>
 			<axis xyz="0 1 0"/>
+			<dynamics damping="0.1" friction="0.1"/>
 		</joint>
+
+		<gazebo reference="${name}_link">
+			<material>Gazebo/DarkGrey</material>
+			<mu1>1.0</mu1>
+			<mu2>1.0</mu2>
+		</gazebo>
 	</xacro:macro>
 </robot>

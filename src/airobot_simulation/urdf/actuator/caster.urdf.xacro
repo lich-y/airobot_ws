@@ -35,5 +35,13 @@
 			<child link="${name}_link"/>
 			<origin xyz="${xyz}" rpy="0 0 0"/>
 		</joint>
+
+		<gazebo reference="${name}_link">
+			<material>Gazebo/Black</material>
+			<mu1>0.5</mu1>
+			<mu2>0.5</mu2>
+			<slip1>0.05</slip1>
+			<slip2>0.05</slip2>
+		</gazebo>
 	</xacro:macro>
 </robot>

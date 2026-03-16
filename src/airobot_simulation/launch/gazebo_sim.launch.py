@@ -73,6 +73,18 @@ def generate_launch_description():
         }]
     )
 
+    # Joint state publisher node (publishes joint_states for robot joints)
+    joint_state_publisher_node = Node(
+        package='joint_state_publisher',
+        executable='joint_state_publisher',
+        name='joint_state_publisher',
+        output='screen',
+        parameters=[{
+            'robot_description': robot_description_content,
+            'use_sim_time': True
+        }]
+    )
+
     # Gazebo launch with world
     gazebo = ExecuteProcess(
         cmd=[
@@ -95,7 +107,7 @@ def generate_launch_description():
             '-topic', 'robot_description',
             '-x', '0',
             '-y', '0',
-            '-z', '0.1'
+            '-z', '0.0'
         ],
         parameters=[{
             'use_sim_time': True
@@ -111,6 +123,9 @@ def generate_launch_description():
 
         # Robot state publisher
         robot_state_publisher_node,
+
+        # Joint state publisher
+        joint_state_publisher_node,
 
         # Gazebo
         gazebo,

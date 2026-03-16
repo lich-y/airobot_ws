@@ -57,6 +57,9 @@
 				<left_joint>${left_wheel}</left_joint>
 				<right_joint>${right_wheel}</right_joint>
 
+				<!-- 是否发布关节状态 -->
+				<publish_joint_state>true</publish_joint_state>
+
 				<!-- 运动学参数 -->
 				<!-- 左右轮间距 (米) -->
 				<wheel_separation>${wheel_separation}</wheel_separation>
@@ -84,9 +87,9 @@
 
 				<!-- 坐标系 ID -->
 				<!-- 里程计坐标系 -->
-				<odom_frame_id>${odom_frame_id}</odom_frame_id>
+				<odometry_frame>${odom_frame_id}</odometry_frame>
 				<!-- 基座坐标系 -->
-				<base_frame_id>${base_frame_id}</base_frame_id>
+				<robot_base_frame>${base_frame_id}</robot_base_frame>
 				<!-- 世界坐标系 -->
 				<world_frame>${world_frame}</world_frame>
 
