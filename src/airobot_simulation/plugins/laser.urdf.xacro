@@ -29,7 +29,7 @@
 	包含所有可配置参数
 	-->
 	<xacro:macro name="laser_sensor" params="name parent
-		topic_name:='scan' frame_id:='laser_link'
+		topic_name:='scan' 
 		update_rate:=10
 		ray_count:=360
 		ray_range_min:=0.10 ray_range_max:=10.0 ray_range_resolution:=0.01
@@ -39,6 +39,7 @@
 
 		<!-- Gazebo 激光雷达传感器插件 -->
 		<gazebo reference="${name}_link">
+			<pose>${xyz} ${rpy}</pose>
 			<sensor type="ray" name="${name}">
 				<pose>0 0 0 0 0 0</pose>
 
@@ -85,14 +86,9 @@
 					<output_type>sensor_msgs/LaserScan</output_type>
 
 					<!-- 坐标系 -->
-					<frame_name>${frame_id}</frame_name>
+					<frame_name>${name}_link</frame_name>
 				</plugin>
 			</sensor>
-		</gazebo>
-
-		<!-- 传感器位置和姿态 -->
-		<gazebo reference="${name}_link">
-			<pose>${xyz} ${rpy}</pose>
 		</gazebo>
 
 	</xacro:macro>
