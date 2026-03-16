@@ -1,0 +1,121 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="laser_plugin">
+
+	<!--
+	激光雷达传感器插件 (Laser Sensor Plugin) 用于 Gazebo 仿真
+	
+	参数说明:
+	- name: 传感器名称
+	- parent: 父链接名称
+	- topic_name: 激光扫描数据发布的话题名称 (默认: scan)
+	- frame_id: 传感器坐标系 ID (默认: laser_link)
+	- update_rate: 更新频率 (Hz, 默认: 10)
+	- ray_count: 激光射线数量 (默认: 360)
+	- ray_range_min: 最小测距范围 (米, 默认: 0.10)
+	- ray_range_max: 最大测距范围 (米, 默认: 10.0)
+	- ray_range_resolution: 测距分辨率 (默认: 0.01)
+	- ray_angle_min: 最小扫描角度 (弧度, 默认: -3.14159)
+	- ray_angle_max: 最大扫描角度 (弧度, 默认: 3.14159)
+	- ray_angle_increment: 角度增量 (弧度, 默认: 0.0175)
+	-xyz: 传感器相对于父链接的位置 (默认: 0 0 0)
+	- rpy: 传感器的姿态 (默认: 0 0 0)
+	- publish_tf: 是否发布 TF (默认: true)
+	- visualize: 是否显示激光扫描可视化 (默认: true)
+	- always_on: 传感器是否始终启用 (默认: true)
+	-->
+
+	<!--
+	完整版激光雷达插件宏
+	包含所有可配置参数
+	-->
+	<xacro:macro name="laser_sensor" params="name parent
+		topic_name:='scan' frame_id:='laser_link'
+		update_rate:=10
+		ray_count:=360
+		ray_range_min:=0.10 ray_range_max:=10.0 ray_range_resolution:=0.01
+		ray_angle_min:=-3.14159 ray_angle_max:=3.14159 ray_angle_increment:=0.0175
+		xyz:='0 0 0' rpy:='0 0 0'
+		publish_tf:=true visualize:=true always_on:=true">
+
+		<!-- Gazebo 激光雷达传感器插件 -->
+		<gazebo reference="${name}_link">
+			<sensor type="ray" name="${name}">
+				<pose>0 0 0 0 0 0</pose>
+
+				<!-- 更新频率 (Hz) -->
+				<update_rate>${update_rate}</update_rate>
+
+				<!-- 视觉和碰撞设置 -->
+				<always_on>${always_on}</always_on>
+				<visualize>${visualize}</visualize>
+
+				<!-- 激光射线配置 -->
+				<ray>
+					<scan>
+						<horizontal>
+							<samples>${ray_count}</samples>
+							<resolution>1</resolution>
+							<min_angle>${ray_angle_min}</min_angle>
+							<max_angle>${ray_angle_max}</max_angle>
+						</horizontal>
+					</scan>
+					<range>
+						<min>${ray_range_min}</min>
+						<max>${ray_range_max}</max>
+						<resolution>${ray_range_resolution}</resolution>
+					</range>
+					<noise>
+						<type>gaussian</type>
+						<mean>0.0</mean>
+						<stddev>0.01</stddev>
+					</noise>
+				</ray>
+
+				<!-- 插件配置 -->
+				<plugin name="${name}_plugin" filename="libgazebo_ros_ray_sensor.so">
+					<ros>
+						<namespace>/</namespace>
+						<remapping>~/out:=${topic_name}</remapping>
+					</ros>
+
+					<!-- 话题设置 -->
+					<topic_name>${topic_name}</topic_name>
+
+					<!-- 输出类型 -->
+					<output_type>sensor_msgs/LaserScan</output_type>
+
+					<!-- 坐标系 -->
+					<frame_name>${frame_id}</frame_name>
+				</plugin>
+			</sensor>
+		</gazebo>
+
+		<!-- 传感器位置和姿态 -->
+		<gazebo reference="${name}_link">
+			<pose>${xyz} ${rpy}</pose>
+		</gazebo>
+
+	</xacro:macro>
+
+	<!--
+	简化版激光雷达插件宏
+	只包含必要参数，其他使用默认值
+	-->
+	<xacro:macro name="laser_sensor_simple" params="name parent topic_name:='scan' update_rate:=10
+		ray_range_min:=0.10 ray_range_max:=10.0 xyz:='0 0 0' rpy:='0 0 0' always_on:=true">
+
+		<!-- 调用完整版宏，使用默认参数 -->
+		<xacro:laser_sensor
+			name="${name}"
+			parent="${parent}"
+			topic_name="${topic_name}"
+			update_rate="${update_rate}"
+			ray_range_min="${ray_range_min}"
+			ray_range_max="${ray_range_max}"
+			xyz="${xyz}"
+			rpy="${rpy}"
+			always_on="${always_on}"/>
+
+	</xacro:macro>
+
+</robot>

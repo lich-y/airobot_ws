@@ -7,6 +7,7 @@
 	<xacro:include filename="$(find airobot_simulation)/urdf/sensor/imu.urdf.xacro"/>
 	<xacro:include filename="$(find airobot_simulation)/urdf/sensor/laser.urdf.xacro"/>
 	<xacro:include filename="$(find airobot_simulation)/plugins/diff_drive.urdf.xacro"/>
+	<xacro:include filename="$(find airobot_simulation)/plugins/laser.urdf.xacro"/>
 
 	<!-- 计算差速驱动参数 -->
 	<!-- 轮间距: 左右轮 y 坐标之差的绝对值 -->
@@ -34,6 +35,15 @@
 		<xacro:camera name="camera" parent="base_link" xyz="${camera_xyz}"/>
 		<xacro:imu name="imu" parent="base_link" xyz="${imu_xyz}"/>
 		<xacro:laser name="top_laser" parent="base_link" xyz="${laser_xyz}"/>
+
+		<!-- 激光雷达传感器插件 -->
+		<xacro:laser_sensor
+			name="top_laser"
+			parent="base_link"
+			topic_name="scan"
+			frame_id="top_laser_link"
+			update_rate="10"
+			xyz="${laser_xyz}"/>
 
 		<!-- 差速驱动插件 -->
 		<xacro:diff_drive
