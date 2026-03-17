@@ -10,6 +10,7 @@
 	<xacro:include filename="$(find airobot_simulation)/plugins/diff_drive.urdf.xacro"/>    <!-- 差速驱动插件 -->
 	<xacro:include filename="$(find airobot_simulation)/plugins/laser.urdf.xacro"/>         <!-- 激光雷达插件 -->
 	<xacro:include filename="$(find airobot_simulation)/plugins/imu.urdf.xacro"/>           <!-- IMU惯性测量单元插件 -->
+	<xacro:include filename="$(find airobot_simulation)/plugins/camera.urdf.xacro"/>        <!-- 相机传感器插件(支持RGB/深度) -->
 
 	<!-- 计算差速驱动参数 -->
 	<!-- 轮间距: 左右轮 y 坐标之差的绝对值 -->
@@ -27,12 +28,13 @@
 		rear_caster_xyz: 后从动轮相对于基座的安装位置(x,y,z,单位:米)
 		front_caster_xyz: 前从动轮相对于基座的安装位置(x,y,z,单位:米)
 		camera_xyz: 摄像头相对于基座的安装位置(x,y,z,单位:米)
+		camera_type: 相机类型 (rgb: 普通相机, depth: 深度相机) (默认: rgb)
 		imu_xyz: IMU相对于基座的安装位置(x,y,z,单位:米)
 		laser_xyz: 激光雷达相对于基座的安装位置(x,y,z,单位:米)
 		laser_angle_min: 激光雷达最小扫描角度(弧度)
 		laser_angle_max: 激光雷达最大扫描角度(弧度)
 	-->
-	<xacro:macro name="airobot" params="base_length base_radius left_wheel_xyz right_wheel_xyz rear_caster_xyz front_caster_xyz camera_xyz imu_xyz laser_xyz laser_angle_min laser_angle_max">
+	<xacro:macro name="airobot" params="base_length base_radius left_wheel_xyz right_wheel_xyz rear_caster_xyz front_caster_xyz camera_xyz camera_type imu_xyz laser_xyz laser_angle_min laser_angle_max">
 		<!-- 基座足印链接(虚拟链接,用于确定机器人底部位置) -->
 		<link name="base_footprint"/>
 
@@ -55,8 +57,18 @@
 		<!-- 前从动轮 -->
 		<xacro:caster name="front_caster" parent="base_link" xyz="${front_caster_xyz}"/>
 
-		<!-- 摄像头传感器 -->
+		<!-- 摄像头传感器 (使用camera_sensor宏，通过camera_type切换RGB/深度相机) -->
 		<xacro:camera name="camera" parent="base_link" xyz="${camera_xyz}"/>
+
+		<!-- 相机传感器插件 (通过camera_type参数切换: rgb=普通相机, depth=深度相机) -->
+		<xacro:camera_sensor
+			name="camera"
+			parent="base_link"
+			camera_type="${camera_type}"
+			topic_name="camera"
+			update_rate="30"
+			xyz="${camera_xyz}"/>
+
 		<!-- IMU惯性测量单元 -->
 		<xacro:imu name="imu" parent="base_link" xyz="${imu_xyz}"/>
 		<!-- 激光雷达传感器 -->
@@ -106,6 +118,7 @@
 	<xacro:arg name="rear_caster_xyz" default="-0.11 0.0 -0.13"/>   <!-- 后从动轮安装位置(x y z,单位:米) -->
 	<xacro:arg name="front_caster_xyz" default="0.11 0.0 -0.13"/>   <!-- 前从动轮安装位置(x y z,单位:米) -->
 	<xacro:arg name="camera_xyz" default="0.12 0.0 0.06"/>    <!-- 摄像头安装位置(x y z,单位:米) -->
+	<xacro:arg name="camera_type" default="depth"/>           <!-- 相机类型: rgb=普通相机, depth=深度相机 -->
 	<xacro:arg name="imu_xyz" default="0.0 0.0 0.03"/>       <!-- IMU安装位置(x y z,单位:米) -->
 	<xacro:arg name="laser_xyz" default="0.0 0.0 0.125"/>   <!-- 激光雷达安装位置(x y z,单位:米) -->
 	<!-- 激光雷达扫描角度参数 -->
@@ -124,9 +137,11 @@
 			rear_caster_xyz="$(arg rear_caster_xyz)"
 			front_caster_xyz="$(arg front_caster_xyz)"
 			camera_xyz="$(arg camera_xyz)"
+			camera_type="$(arg camera_type)"
 			imu_xyz="$(arg imu_xyz)"
 			laser_xyz="$(arg laser_xyz)"
 			laser_angle_min="$(arg laser_angle_min)"
 			laser_angle_max="$(arg laser_angle_max)"/>
 </robot>
+
 

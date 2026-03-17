@@ -1,0 +1,311 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="camera_plugin">
+
+	<!--
+	通用相机传感器插件宏 (Camera Sensor Plugin) 用于 Gazebo 仿真
+	通过 camera_type 参数切换普通相机(RGB)或深度相机(Depth)
+	
+	参数说明:
+	- name: 传感器名称
+	- parent: 父链接名称
+	- camera_type: 相机类型 (rgb: 普通彩色相机, depth: 深度相机) (默认: rgb)
+	- topic_name: 图像发布的话题名称 (默认: camera)
+	- update_rate: 更新频率 (Hz, 默认: 30)
+	- rgb_topic: RGB图像话题名 (默认: image_raw)
+	- depth_topic: 深度图像话题名 (默认: depth/image_raw)
+	- camera_info: 相机信息话题名 (默认: camera_info)
+	- points_topic: 点云话题名 (默认: depth/points)
+	- xyz: 传感器相对于父链接的位置 (默认: 0 0 0)
+	- rpy: 传感器的姿态 (默认: 0 0 0)
+	- publish_tf: 是否发布 TF (默认: true)
+	- visualize: 是否显示相机可视化 (默认: true)
+	- always_on: 传感器是否始终启用 (默认: true)
+	- horizontal_fov: 水平视场角 (弧度, 默认: 1.047)
+	- image_width: 图像宽度 (像素, 默认: 640)
+	- image_height: 图像高度 (像素, 默认: 480)
+	- clip_near: 近裁剪面距离 (米, 默认: 0.1)
+	- clip_far: 远裁剪面距离 (米, 默认: 10.0)
+	-->
+
+	<!--
+	通用相机传感器插件宏
+	通过 camera_type 参数切换: rgb=普通相机, depth=深度相机
+	-->
+	<xacro:macro name="camera_sensor" params="name parent
+		camera_type:='rgb'
+		topic_name:='camera'
+		update_rate:=30
+		rgb_topic:='image_raw'
+		depth_topic:='depth/image_raw'
+		camera_info:='camera_info'
+		points_topic:='depth/points'
+		xyz:='0 0 0' rpy:='0 0 0'
+		publish_tf:=true visualize:=true always_on:=true
+		horizontal_fov:=1.047
+		image_width:=640 image_height:=480
+		clip_near:=0.1 clip_far:=10.0">
+
+		<!-- 条件判断: 根据 camera_type 选择相机类型 -->
+		<xacro:if value="${camera_type == 'depth'}">
+			<!-- 深度相机传感器插件 -->
+			<gazebo reference="${name}_link">
+				<pose>${xyz} ${rpy}</pose>
+				<sensor type="depth" name="${name}">
+					<pose>0 0 0 0 0 0</pose>
+
+					<!-- 更新频率 (Hz) -->
+					<update_rate>${update_rate}</update_rate>
+
+					<!-- 视觉和碰撞设置 -->
+					<always_on>${always_on}</always_on>
+					<visualize>${visualize}</visualize>
+
+					<!-- 深度相机视角配置 -->
+					<camera>
+						<horizontal_fov>${horizontal_fov}</horizontal_fov>
+						<image>
+							<width>${image_width}</width>
+							<height>${image_height}</height>
+							<format>R8G8B8</format>
+						</image>
+						<clip>
+							<near>${clip_near}</near>
+							<far>${clip_far}</far>
+						</clip>
+						<noise>
+							<type>gaussian</type>
+							<mean>0.0</mean>
+							<stddev>0.007</stddev>
+						</noise>
+					</camera>
+
+					<!-- 插件配置 -->
+					<plugin name="${name}_plugin" filename="libgazebo_ros_camera.so">
+						<ros>
+							<namespace>/</namespace>
+							<remapping>~/image_raw:=${rgb_topic}</remapping>
+							<remapping>~/depth/image_raw:=${depth_topic}</remapping>
+							<remapping>~/camera_info:=${camera_info}</remapping>
+							<remapping>~/depth/points:=${points_topic}</remapping>
+						</ros>
+
+						<!-- 相机名称和坐标系 -->
+						<camera_name>${name}</camera_name>
+						<frame_name>${name}_link</frame_name>
+
+						<!-- 图像话题设置 -->
+						<image_topic_name>${rgb_topic}</image_topic_name>
+						<depth_image_topic_name>${depth_topic}</depth_image_topic_name>
+						<camera_info_topic_name>${camera_info}</camera_info_topic_name>
+
+						<!-- 点云话题设置 -->
+						<point_cloud_topic_name>${points_topic}</point_cloud_topic_name>
+						<point_cloud_cutoff>${clip_near}</point_cloud_cutoff>
+
+						<!-- 深度相机固有参数 -->
+						<hack_baseline>0.07</hack_baseline>
+						<distortion_k1>0.0</distortion_k1>
+						<distortion_k2>0.0</distortion_k2>
+						<distortion_k3>0.0</distortion_k3>
+						<distortion_t1>0.0</distortion_t1>
+						<distortion_t2>0.0</distortion_t2>
+
+						<!-- 视场角 -->
+						<horizontal_fov>${horizontal_fov}</horizontal_fov>
+
+						<!-- 图像分辨率 -->
+						<image_width>${image_width}</image_width>
+						<image_height>${image_height}</image_height>
+
+						<!-- 裁剪范围 -->
+						<clip_near>${clip_near}</clip_near>
+						<clip_far>${clip_far}</clip_far>
+
+						<!-- TF发布 -->
+						<publish_tf>${publish_tf}</publish_tf>
+
+						<!-- 深度相机点云输出配置 -->
+						<depth_camera_provide_point_cloud>true</depth_camera_provide_point_cloud>
+						<depth_camera_register_raw_point_cloud>true</depth_camera_register_raw_point_cloud>
+
+					</plugin>
+				</sensor>
+			</gazebo>
+		</xacro:if>
+
+		<xacro:if value="${camera_type == 'rgb'}">
+			<!-- 普通RGB相机传感器插件 -->
+			<gazebo reference="${name}_link">
+				<pose>${xyz} ${rpy}</pose>
+				<sensor type="camera" name="${name}">
+					<pose>0 0 0 0 0 0</pose>
+
+					<!-- 更新频率 (Hz) -->
+					<update_rate>${update_rate}</update_rate>
+
+					<!-- 视觉和碰撞设置 -->
+					<always_on>${always_on}</always_on>
+					<visualize>${visualize}</visualize>
+
+					<!-- RGB相机视角配置 -->
+					<camera>
+						<horizontal_fov>${horizontal_fov}</horizontal_fov>
+						<image>
+							<width>${image_width}</width>
+							<height>${image_height}</height>
+							<format>R8G8B8</format>
+						</image>
+						<clip>
+							<near>${clip_near}</near>
+							<far>${clip_far}</far>
+						</clip>
+						<noise>
+							<type>gaussian</type>
+							<mean>0.0</mean>
+							<stddev>0.007</stddev>
+						</noise>
+					</camera>
+
+					<!-- 插件配置 -->
+					<plugin name="${name}_plugin" filename="libgazebo_ros_camera.so">
+						<ros>
+							<namespace>/</namespace>
+							<remapping>~/image_raw:=${rgb_topic}</remapping>
+							<remapping>~/camera_info:=${camera_info}</remapping>
+						</ros>
+
+						<!-- 相机名称和坐标系 -->
+						<camera_name>${name}</camera_name>
+						<frame_name>${name}_link</frame_name>
+
+						<!-- 图像话题设置 -->
+						<image_topic_name>${rgb_topic}</image_topic_name>
+						<camera_info_topic_name>${camera_info}</camera_info_topic_name>
+
+						<!-- 相机固有参数 -->
+						<distortion_k1>0.0</distortion_k1>
+						<distortion_k2>0.0</distortion_k2>
+						<distortion_k3>0.0</distortion_k3>
+						<distortion_t1>0.0</distortion_t1>
+						<distortion_t2>0.0</distortion_t2>
+
+						<!-- 视场角 -->
+						<horizontal_fov>${horizontal_fov}</horizontal_fov>
+
+						<!-- 图像分辨率 -->
+						<image_width>${image_width}</image_width>
+						<image_height>${image_height}</image_height>
+
+						<!-- 裁剪范围 -->
+						<clip_near>${clip_near}</clip_near>
+						<clip_far>${clip_far}</clip_far>
+
+						<!-- TF发布 -->
+						<publish_tf>${publish_tf}</publish_tf>
+
+					</plugin>
+				</sensor>
+			</gazebo>
+		</xacro:if>
+
+	</xacro:macro>
+
+	<!--
+	简化版相机传感器插件宏
+	只包含必要参数，其他使用默认值
+	-->
+	<xacro:macro name="camera_sensor_simple" params="name parent camera_type:='rgb' topic_name:='camera'
+		update_rate:=30 xyz:='0 0 0' rpy:='0 0 0' always_on:=true">
+
+		<!-- 调用通用宏 -->
+		<xacro:camera_sensor
+			name="${name}"
+			parent="${parent}"
+			camera_type="${camera_type}"
+			topic_name="${topic_name}"
+			update_rate="${update_rate}"
+			xyz="${xyz}"
+			rpy="${rpy}"
+			always_on="${always_on}"/>
+
+	</xacro:macro>
+
+	<!--
+	深度相机传感器插件宏 (兼容旧接口)
+	-->
+	<xacro:macro name="depth_camera_sensor" params="name parent
+		topic_name:='depth_camera'
+		update_rate:=30
+		depth_image_raw:='depth_raw'
+		image_raw:='image_raw'
+		camera_info:='camera_info'
+		rgb_image_raw:='image_raw'
+		depth_image:='depth'
+		point_cloud:='points'
+		xyz:='0 0 0' rpy:='0 0 0'
+		publish_tf:=true visualize:=true always_on:=true
+		horizontal_fov:=1.047
+		image_width:=640 image_height:=480
+		clip_near:=0.1 clip_far:=10.0">
+
+		<!-- 调用通用宏，使用depth模式 -->
+		<xacro:camera_sensor
+			name="${name}"
+			parent="${parent}"
+			camera_type="depth"
+			topic_name="${topic_name}"
+			update_rate="${update_rate}"
+			rgb_topic="${rgb_image_raw}"
+			depth_topic="${depth_image_raw}"
+			camera_info="${camera_info}"
+			points_topic="${point_cloud}"
+			xyz="${xyz}"
+			rpy="${rpy}"
+			publish_tf="${publish_tf}"
+			visualize="${visualize}"
+			always_on="${always_on}"
+			horizontal_fov="${horizontal_fov}"
+			image_width="${image_width}"
+			image_height="${image_height}"
+			clip_near="${clip_near}"
+			clip_far="${clip_far}"/>
+
+	</xacro:macro>
+
+	<!--
+	普通RGB相机传感器插件宏 (兼容旧接口)
+	-->
+	<xacro:macro name="rgb_camera_sensor" params="name parent
+		topic_name:='camera'
+		update_rate:=30
+		rgb_topic:='image_raw'
+		camera_info:='camera_info'
+		xyz:='0 0 0' rpy:='0 0 0'
+		publish_tf:=true visualize:=true always_on:=true
+		horizontal_fov:=1.047
+		image_width:=640 image_height:=480
+		clip_near:=0.1 clip_far:=10.0">
+
+		<!-- 调用通用宏，使用rgb模式 -->
+		<xacro:camera_sensor
+			name="${name}"
+			parent="${parent}"
+			camera_type="rgb"
+			topic_name="${topic_name}"
+			update_rate="${update_rate}"
+			rgb_topic="${rgb_topic}"
+			camera_info="${camera_info}"
+			xyz="${xyz}"
+			rpy="${rpy}"
+			publish_tf="${publish_tf}"
+			visualize="${visualize}"
+			always_on="${always_on}"
+			horizontal_fov="${horizontal_fov}"
+			image_width="${image_width}"
+			image_height="${image_height}"
+			clip_near="${clip_near}"
+			clip_far="${clip_far}"/>
+
+	</xacro:macro>
+
+</robot>
