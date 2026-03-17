@@ -26,4 +26,10 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+# 安装Python节点
+install(PROGRAMS
+  src/auto_relocalization_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_package()

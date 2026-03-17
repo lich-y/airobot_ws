@@ -121,7 +121,17 @@ def generate_launch_description() -> LaunchDescription:
         condition=IfCondition(launch_rviz),
     )
 
+    # ============================== 4. 自动重定位节点 ==============================
+    # 启动自动重定位节点 - 监听initialpose话题并触发AMCL重新定位
+    auto_relocalization_node = Node(
+        package='airobot_navigation2',
+        executable='auto_relocalization_node.py',
+        name='auto_relocalization',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
+    )
+
     # ============================== 3. 返回启动描述 ==============================
     return LaunchDescription(
-        launch_args + [gazebo_sim_launch, nav2_bringup_launch, rviz_node]
+        launch_args + [gazebo_sim_launch, nav2_bringup_launch, rviz_node, auto_relocalization_node]
     )

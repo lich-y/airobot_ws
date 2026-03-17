@@ -18,19 +18,23 @@ amcl:
     laser_min_range: -1.0
     laser_model_type: "likelihood_field"
     max_beams: 60
+    # 减少粒子数可以加快收敛速度
     max_particles: 2000
     min_particles: 500
     odom_frame_id: "odom"
+    # 降低pf_err和提高pf_z可以让粒子更快收敛
     pf_err: 0.05
     pf_z: 0.99
-    recovery_alpha_fast: 0.0
-    recovery_alpha_slow: 0.0
+    # 调整恢复参数以加快定位恢复
+    recovery_alpha_fast: 0.1
+    recovery_alpha_slow: 0.001
     resample_interval: 1
     robot_model_type: "nav2_amcl::DifferentialMotionModel"
     save_pose_rate: 0.5
     sigma_hit: 0.2
     tf_broadcast: true
     transform_tolerance: 1.0
+    # 降低更新阈值可以让定位更频繁地更新
     update_min_a: 0.2
     update_min_d: 0.25
     z_hit: 0.5
