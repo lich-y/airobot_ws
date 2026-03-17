@@ -62,10 +62,19 @@ def generate_launch_description() -> LaunchDescription:
 
     # ============================== 1. 仿真环境启动 ==============================
     # 导入gazebo_sim.launch.py
+    # World文件路径
+    world_file_path = os.path.join(
+        airobot_simulation_dir,
+        'world',
+        'map_1205_01_sky.sdf'
+    )
     gazebo_sim_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(airobot_simulation_dir, 'launch', 'gazebo_sim.launch.py')
         ),
+        launch_arguments={
+            'world_file': world_file_path,
+        }.items(),
     )
 
     # ============================== 2. 导航启动 ==============================
@@ -73,7 +82,7 @@ def generate_launch_description() -> LaunchDescription:
     map_yaml_path = os.path.join(
         airobot_navigation2_dir,
         'maps',
-        'airobot_map.yaml'
+        'map_1205_01_sky.yaml'
     )
     nav2_param_path = os.path.join(
         airobot_navigation2_dir,
