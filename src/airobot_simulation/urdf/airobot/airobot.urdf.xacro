@@ -1,42 +1,68 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="airobot">
-	<xacro:include filename="$(find airobot_simulation)/urdf/actuator/caster.urdf.xacro"/>
-	<xacro:include filename="$(find airobot_simulation)/urdf/actuator/wheel.urdf.xacro"/>
-	<xacro:include filename="$(find airobot_simulation)/urdf/airobot/base.urdf.xacro"/>
-	<xacro:include filename="$(find airobot_simulation)/urdf/sensor/camera.urdf.xacro"/>
-	<xacro:include filename="$(find airobot_simulation)/urdf/sensor/imu.urdf.xacro"/>
-	<xacro:include filename="$(find airobot_simulation)/urdf/sensor/laser.urdf.xacro"/>
-	<xacro:include filename="$(find airobot_simulation)/plugins/diff_drive.urdf.xacro"/>
-	<xacro:include filename="$(find airobot_simulation)/plugins/laser.urdf.xacro"/>
+	<!-- 包含所需的 xacro 文件 -->
+	<xacro:include filename="$(find airobot_simulation)/urdf/actuator/caster.urdf.xacro"/>  <!-- 从动轮宏定义 -->
+	<xacro:include filename="$(find airobot_simulation)/urdf/actuator/wheel.urdf.xacro"/>  <!-- 车轮宏定义 -->
+	<xacro:include filename="$(find airobot_simulation)/urdf/airobot/base.urdf.xacro"/>    <!-- 基座宏定义 -->
+	<xacro:include filename="$(find airobot_simulation)/urdf/sensor/camera.urdf.xacro"/>   <!-- 摄像头宏定义 -->
+	<xacro:include filename="$(find airobot_simulation)/urdf/sensor/imu.urdf.xacro"/>      <!-- IMU宏定义 -->
+	<xacro:include filename="$(find airobot_simulation)/urdf/sensor/laser.urdf.xacro"/>    <!-- 激光雷达宏定义 -->
+	<xacro:include filename="$(find airobot_simulation)/plugins/diff_drive.urdf.xacro"/>    <!-- 差速驱动插件 -->
+	<xacro:include filename="$(find airobot_simulation)/plugins/laser.urdf.xacro"/>         <!-- 激光雷达插件 -->
 
 	<!-- 计算差速驱动参数 -->
 	<!-- 轮间距: 左右轮 y 坐标之差的绝对值 -->
 	<!-- left_wheel y=0.18, right_wheel y=-0.18, separation = 0.36 -->
-	<xacro:property name="wheel_separation" value="0.36"/>
+	<xacro:property name="wheel_separation" value="0.36"/>  <!-- 左右轮中心间距(米) -->
 	<!-- 轮直径: wheel radius * 2 = 0.08 * 2 = 0.16 -->
-	<xacro:property name="wheel_diameter" value="0.16"/>
+	<xacro:property name="wheel_diameter" value="0.16"/>   <!-- 轮子直径(米) -->
 
+	<!-- 机器人主宏定义 -->
+	<!-- 参数说明:
+		base_length: 基座高度(米)
+		base_radius: 基座半径(米)
+		left_wheel_xyz: 左轮相对于基座的安装位置(x,y,z,单位:米)
+		right_wheel_xyz: 右轮相对于基座的安装位置(x,y,z,单位:米)
+		rear_caster_xyz: 后从动轮相对于基座的安装位置(x,y,z,单位:米)
+		front_caster_xyz: 前从动轮相对于基座的安装位置(x,y,z,单位:米)
+		camera_xyz: 摄像头相对于基座的安装位置(x,y,z,单位:米)
+		imu_xyz: IMU相对于基座的安装位置(x,y,z,单位:米)
+		laser_xyz: 激光雷达相对于基座的安装位置(x,y,z,单位:米)
+		laser_angle_min: 激光雷达最小扫描角度(弧度)
+		laser_angle_max: 激光雷达最大扫描角度(弧度)
+	-->
 	<xacro:macro name="airobot" params="base_length base_radius left_wheel_xyz right_wheel_xyz rear_caster_xyz front_caster_xyz camera_xyz imu_xyz laser_xyz laser_angle_min laser_angle_max">
+		<!-- 基座足印链接(虚拟链接,用于确定机器人底部位置) -->
 		<link name="base_footprint"/>
 
+		<!-- 创建基座链接 -->
 		<xacro:base name="base_link" length="${base_length}" radius="${base_radius}"/>
 
+		<!-- 基座足印到基座的固定关节 -->
 		<joint name="base_footprint_joint" type="fixed">
 			<parent link="base_footprint"/>
 			<child link="base_link"/>
 			<origin xyz="0 0 ${0.08 + base_length / 2.0}" rpy="0 0 0"/>
 		</joint>
 
+		<!-- 左轮(驱动轮) -->
 		<xacro:wheel name="left_wheel" parent="base_link" xyz="${left_wheel_xyz}"/>
+		<!-- 右轮(驱动轮) -->
 		<xacro:wheel name="right_wheel" parent="base_link" xyz="${right_wheel_xyz}"/>
+		<!-- 后从动轮 -->
 		<xacro:caster name="rear_caster" parent="base_link" xyz="${rear_caster_xyz}"/>
+		<!-- 前从动轮 -->
 		<xacro:caster name="front_caster" parent="base_link" xyz="${front_caster_xyz}"/>
 
+		<!-- 摄像头传感器 -->
 		<xacro:camera name="camera" parent="base_link" xyz="${camera_xyz}"/>
+		<!-- IMU惯性测量单元 -->
 		<xacro:imu name="imu" parent="base_link" xyz="${imu_xyz}"/>
+		<!-- 激光雷达传感器 -->
 		<xacro:laser name="laser" parent="base_link" xyz="${laser_xyz}"/>
 
 		<!-- 激光雷达传感器插件 -->
+		<!-- 参数: name(传感器名称), parent(父链接), topic_name(发布话题名), update_rate(更新频率Hz), xyz(安装位置) -->
 		<xacro:laser_sensor
 			name="laser"
 			parent="base_link"
@@ -47,6 +73,7 @@
 			xyz="${laser_xyz}"/>
 
 		<!-- 差速驱动插件 -->
+		<!-- 参数: name(插件名称), parent(父链接), left_wheel/right_wheel(轮子关节名), wheel_separation(轮间距), wheel_diameter(轮直径), update_rate(更新频率Hz) -->
 		<xacro:diff_drive
 			name="diff_drive"
 			parent="base_link"
@@ -58,22 +85,23 @@
 			base_frame_id="base_footprint"/>
 	</xacro:macro>
 
-	<xacro:arg name="base_length" default="0.18"/>
-	<xacro:arg name="base_radius" default="0.16"/>
-	<xacro:arg name="left_wheel_xyz" default="0.0 0.18 -0.09"/>
-	<xacro:arg name="right_wheel_xyz" default="0.0 -0.18 -0.09"/>
-	<xacro:arg name="rear_caster_xyz" default="-0.11 0.0 -0.13"/>
-	<xacro:arg name="front_caster_xyz" default="0.11 0.0 -0.13"/>
-	<xacro:arg name="camera_xyz" default="0.12 0.0 0.06"/>
-	<xacro:arg name="imu_xyz" default="0.0 0.0 0.03"/>
-	<xacro:arg name="laser_xyz" default="0.0 0.0 0.125"/>
+	<!-- 默认参数配置(可在launch文件中覆盖) -->
+	<xacro:arg name="base_length" default="0.18"/>           <!-- 基座高度(米) -->
+	<xacro:arg name="base_radius" default="0.16"/>          <!-- 基座半径(米) -->
+	<xacro:arg name="left_wheel_xyz" default="0.0 0.18 -0.09"/>    <!-- 左轮安装位置(x y z,单位:米) -->
+	<xacro:arg name="right_wheel_xyz" default="0.0 -0.18 -0.09"/>   <!-- 右轮安装位置(x y z,单位:米) -->
+	<xacro:arg name="rear_caster_xyz" default="-0.11 0.0 -0.13"/>   <!-- 后从动轮安装位置(x y z,单位:米) -->
+	<xacro:arg name="front_caster_xyz" default="0.11 0.0 -0.13"/>   <!-- 前从动轮安装位置(x y z,单位:米) -->
+	<xacro:arg name="camera_xyz" default="0.12 0.0 0.06"/>    <!-- 摄像头安装位置(x y z,单位:米) -->
+	<xacro:arg name="imu_xyz" default="0.0 0.0 0.03"/>       <!-- IMU安装位置(x y z,单位:米) -->
+	<xacro:arg name="laser_xyz" default="0.0 0.0 0.125"/>   <!-- 激光雷达安装位置(x y z,单位:米) -->
 	<!-- 激光雷达扫描角度参数 -->
 	<!-- 可选值: -->
 	<!-- 360度: laser_angle_min:=-3.14159, laser_angle_max:=3.14159 -->
 	<!-- 270度: laser_angle_min:=-2.3562, laser_angle_max:=2.3562 -->
 	<!-- 180度: laser_angle_min:=-1.5708, laser_angle_max:=1.5708 -->
-	<xacro:arg name="laser_angle_min" default="-3.14159"/>
-	<xacro:arg name="laser_angle_max" default="3.14159"/>
+	<xacro:arg name="laser_angle_min" default="-3.14159"/>   <!-- 激光雷达最小扫描角度(弧度) -->
+	<xacro:arg name="laser_angle_max" default="3.14159"/>    <!-- 激光雷达最大扫描角度(弧度) -->
 
 	<xacro:airobot
 			base_length="$(arg base_length)"
