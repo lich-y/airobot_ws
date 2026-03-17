@@ -1,9 +1,13 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="wheel_macro">
+	<!-- 车轮执行器宏定义 -->
+	<!-- 参数: name(车轮名称), parent(父链接), xyz(安装位置) -->
 	<xacro:macro name="wheel" params="name parent xyz">
-		<xacro:property name="wheel_radius" value="0.08"/>
-		<xacro:property name="wheel_width" value="0.04"/>
-		<xacro:property name="wheel_mass" value="0.8"/>
+		<!-- 车轮参数 -->
+		<xacro:property name="wheel_radius" value="0.08"/>      <!-- 车轮半径(米) -->
+		<xacro:property name="wheel_width" value="0.04"/>      <!-- 车轮宽度(米) -->
+		<xacro:property name="wheel_mass" value="0.8"/>         <!-- 车轮质量(千克) -->
+		<!-- 车轮惯性矩计算 -->
 		<xacro:property name="wheel_ixx" value="${wheel_mass * (3.0 * wheel_radius * wheel_radius + wheel_width * wheel_width) / 12.0}"/>
 		<xacro:property name="wheel_izz" value="${0.5 * wheel_mass * wheel_radius * wheel_radius}"/>
 

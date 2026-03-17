@@ -1,8 +1,11 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="imu_macro">
+	<!-- IMU(惯性测量单元)传感器宏定义 -->
+	<!-- 参数: name(传感器名称), parent(父链接), xyz(安装位置) -->
 	<xacro:macro name="imu" params="name parent xyz">
-		<xacro:property name="imu_mass" value="0.05"/>
-		<xacro:property name="imu_size" value="0.025"/>
+		<!-- IMU参数 -->
+		<xacro:property name="imu_mass" value="0.05"/>      <!-- IMU质量(千克) -->
+		<xacro:property name="imu_size" value="0.025"/>    <!-- IMU尺寸(米,立方体边长) -->
 
 		<link name="${name}_link">
 			<visual>

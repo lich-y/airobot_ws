@@ -1,10 +1,13 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="camera_macro">
+	<!-- 摄像头传感器宏定义 -->
+	<!-- 参数: name(传感器名称), parent(父链接), xyz(安装位置) -->
 	<xacro:macro name="camera" params="name parent xyz">
-		<xacro:property name="camera_mass" value="0.15"/>
-		<xacro:property name="camera_x" value="0.06"/>
-		<xacro:property name="camera_y" value="0.03"/>
-		<xacro:property name="camera_z" value="0.03"/>
+		<!-- 摄像头参数 -->
+		<xacro:property name="camera_mass" value="0.15"/>  <!-- 摄像头质量(千克) -->
+		<xacro:property name="camera_x" value="0.06"/>    <!-- 摄像头X尺寸(米) -->
+		<xacro:property name="camera_y" value="0.03"/>    <!-- 摄像头Y尺寸(米) -->
+		<xacro:property name="camera_z" value="0.03"/>     <!-- 摄像头Z尺寸(米) -->
 
 		<link name="${name}_link">
 			<visual>

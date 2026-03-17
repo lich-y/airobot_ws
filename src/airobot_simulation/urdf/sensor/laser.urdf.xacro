@@ -1,12 +1,16 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="laser_macro">
+	<!-- 激光雷达传感器宏定义 -->
+	<!-- 参数: name(传感器名称), parent(父链接), xyz(安装位置) -->
 	<xacro:macro name="laser" params="name parent xyz">
-		<xacro:property name="pole_radius" value="0.01"/>
-		<xacro:property name="pole_height" value="0.10"/>
-		<xacro:property name="pole_mass" value="0.08"/>
-		<xacro:property name="laser_radius" value="0.04"/>
-		<xacro:property name="laser_height" value="0.05"/>
-		<xacro:property name="laser_mass" value="0.2"/>
+		<!-- 支架参数 -->
+		<xacro:property name="pole_radius" value="0.01"/>   <!-- 支架半径(米) -->
+		<xacro:property name="pole_height" value="0.10"/>  <!-- 支架高度(米) -->
+		<xacro:property name="pole_mass" value="0.08"/>    <!-- 支架质量(千克) -->
+		<!-- 激光雷达参数 -->
+		<xacro:property name="laser_radius" value="0.04"/>  <!-- 激光雷达半径(米) -->
+		<xacro:property name="laser_height" value="0.05"/>  <!-- 激光雷达高度(米) -->
+		<xacro:property name="laser_mass" value="0.2"/>     <!-- 激光雷达质量(千克) -->
 
 		<link name="${name}_mount_link">
 			<visual>

@@ -1,9 +1,12 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="caster_macro">
+	<!-- 从动轮(万向轮)执行器宏定义 -->
+	<!-- 参数: name(从动轮名称), parent(父链接), xyz(安装位置) -->
 	<xacro:macro name="caster" params="name parent xyz">
-		<xacro:property name="caster_radius" value="0.04"/>
-		<xacro:property name="caster_mass" value="0.3"/>
-		<xacro:property name="caster_inertia" value="${0.4 * caster_mass * caster_radius * caster_radius}"/>
+		<!-- 从动轮参数 -->
+		<xacro:property name="caster_radius" value="0.04"/>      <!-- 从动轮半径(米) -->
+		<xacro:property name="caster_mass" value="0.3"/>         <!-- 从动轮质量(千克) -->
+		<xacro:property name="caster_inertia" value="${0.4 * caster_mass * caster_radius * caster_radius}"/>  <!-- 惯性矩 -->
 
 		<link name="${name}_link">
 			<visual>
