@@ -28,7 +28,7 @@ def generate_launch_description():
     default_world_file = os.path.join(
         pkg_share, 
         'world', 
-        'apartment.world'
+        'server_room.world'
     )
 
     # Declare launch arguments
