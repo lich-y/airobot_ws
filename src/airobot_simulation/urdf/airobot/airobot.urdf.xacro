@@ -16,7 +16,7 @@
 	<!-- 轮直径: wheel radius * 2 = 0.08 * 2 = 0.16 -->
 	<xacro:property name="wheel_diameter" value="0.16"/>
 
-	<xacro:macro name="airobot" params="base_length base_radius left_wheel_xyz right_wheel_xyz rear_caster_xyz front_caster_xyz camera_xyz imu_xyz laser_xyz">
+	<xacro:macro name="airobot" params="base_length base_radius left_wheel_xyz right_wheel_xyz rear_caster_xyz front_caster_xyz camera_xyz imu_xyz laser_xyz laser_angle_min laser_angle_max">
 		<link name="base_footprint"/>
 
 		<xacro:base name="base_link" length="${base_length}" radius="${base_radius}"/>
@@ -42,6 +42,8 @@
 			parent="base_link"
 			topic_name="scan"
 			update_rate="10"
+			ray_angle_min="${laser_angle_min}"
+			ray_angle_max="${laser_angle_max}"
 			xyz="${laser_xyz}"/>
 
 		<!-- 差速驱动插件 -->
@@ -65,6 +67,13 @@
 	<xacro:arg name="camera_xyz" default="0.12 0.0 0.06"/>
 	<xacro:arg name="imu_xyz" default="0.0 0.0 0.03"/>
 	<xacro:arg name="laser_xyz" default="0.0 0.0 0.125"/>
+	<!-- 激光雷达扫描角度参数 -->
+	<!-- 可选值: -->
+	<!-- 360度: laser_angle_min:=-3.14159, laser_angle_max:=3.14159 -->
+	<!-- 270度: laser_angle_min:=-2.3562, laser_angle_max:=2.3562 -->
+	<!-- 180度: laser_angle_min:=-1.5708, laser_angle_max:=1.5708 -->
+	<xacro:arg name="laser_angle_min" default="-3.14159"/>
+	<xacro:arg name="laser_angle_max" default="3.14159"/>
 
 	<xacro:airobot
 			base_length="$(arg base_length)"
@@ -75,6 +84,8 @@
 			front_caster_xyz="$(arg front_caster_xyz)"
 			camera_xyz="$(arg camera_xyz)"
 			imu_xyz="$(arg imu_xyz)"
-			laser_xyz="$(arg laser_xyz)"/>
+			laser_xyz="$(arg laser_xyz)"
+			laser_angle_min="$(arg laser_angle_min)"
+			laser_angle_max="$(arg laser_angle_max)"/>
 </robot>
 
