@@ -9,6 +9,7 @@
 	<xacro:include filename="$(find airobot_simulation)/urdf/sensor/laser.urdf.xacro"/>    <!-- 激光雷达宏定义 -->
 	<xacro:include filename="$(find airobot_simulation)/plugins/diff_drive.urdf.xacro"/>    <!-- 差速驱动插件 -->
 	<xacro:include filename="$(find airobot_simulation)/plugins/laser.urdf.xacro"/>         <!-- 激光雷达插件 -->
+	<xacro:include filename="$(find airobot_simulation)/plugins/imu.urdf.xacro"/>           <!-- IMU惯性测量单元插件 -->
 
 	<!-- 计算差速驱动参数 -->
 	<!-- 轮间距: 左右轮 y 坐标之差的绝对值 -->
@@ -68,9 +69,21 @@
 			parent="base_link"
 			topic_name="scan"
 			update_rate="10"
+			visualize="false"
 			ray_angle_min="${laser_angle_min}"
 			ray_angle_max="${laser_angle_max}"
 			xyz="${laser_xyz}"/>
+
+		<!-- IMU惯性测量单元传感器插件 -->
+		<!-- 参数: name(传感器名称), parent(父链接), topic_name(发布话题名), update_rate(更新频率Hz), xyz(安装位置), gyro/accel_noise_x/y/z(噪声标准差) -->
+		<xacro:imu_sensor
+			name="imu"
+			parent="base_link"
+			topic_name="imu"
+			update_rate="100"
+			xyz="${imu_xyz}"
+			gyro_noise_x="2e-4" gyro_noise_y="2e-4" gyro_noise_z="2e-4"
+			accel_noise_x="2e-4" accel_noise_y="2e-4" accel_noise_z="2e-4"/>
 
 		<!-- 差速驱动插件 -->
 		<!-- 参数: name(插件名称), parent(父链接), left_wheel/right_wheel(轮子关节名), wheel_separation(轮间距), wheel_diameter(轮直径), update_rate(更新频率Hz) -->

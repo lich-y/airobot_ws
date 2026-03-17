@@ -1,0 +1,155 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="imu_plugin">
+
+	<!--
+	IMU惯性测量单元传感器插件 (IMU Sensor Plugin) 用于 Gazebo 仿真
+
+	参数说明:
+	- name: 传感器名称
+	- parent: 父链接名称
+	- topic_name: IMU数据发布的话题名称 (默认: imu)
+	- frame_id: 传感器坐标系 ID (默认: imu_link)
+	- update_rate: 更新频率 (Hz, 默认: 100)
+	- xyz: 传感器相对于父链接的位置 (默认: 0 0 0)
+	- rpy: 传感器的姿态 (默认: 0 0 0)
+	- publish_tf: 是否发布 TF (默认: true)
+	- visualize: 是否显示IMU可视化 (默认: true)
+	- always_on: 传感器是否始终启用 (默认: true)
+	- gyro_noise_x/y/z: 陀螺仪各轴噪声标准差 (默认: 0.0002)
+	- accel_noise_x/y/z: 加速度计各轴噪声标准差 (默认: 0.0002)
+	-->
+
+	<!--
+	完整版IMU传感器插件宏
+	包含所有可配置参数
+	-->
+	<xacro:macro name="imu_sensor" params="name parent
+		topic_name:='imu'
+		update_rate:=100
+		xyz:='0 0 0' rpy:='0 0 0'
+		publish_tf:=true visualize:=true always_on:=true
+		gyro_noise_x:=0.0002 gyro_noise_y:=0.0002 gyro_noise_z:=0.0002
+		accel_noise_x:=0.0002 accel_noise_y:=0.0002 accel_noise_z:=0.0002">
+
+		<!-- Gazebo IMU传感器插件 -->
+		<gazebo reference="${name}_link">
+			<pose>${xyz} ${rpy}</pose>
+			<sensor type="imu" name="${name}">
+				<pose>0 0 0 0 0 0</pose>
+
+				<!-- 更新频率 (Hz) -->
+				<update_rate>${update_rate}</update_rate>
+
+				<!-- 视觉和碰撞设置 -->
+				<always_on>${always_on}</always_on>
+				<visualize>${visualize}</visualize>
+
+				<!-- IMU传感器配置 (六轴: 角速度 + 线加速度) -->
+				<imu>
+
+					<!-- 角速度(陀螺仪)噪声模型 - XYZ三轴独立设置 -->
+					<angular_velocity>
+						<x>
+							<noise type="gaussian">
+								<mean>0.0</mean>
+								<stddev>${gyro_noise_x}</stddev>
+								<bias_mean>0.0000075</bias_mean>
+								<bias_stddev>0.0000008</bias_stddev>
+							</noise>
+						</x>
+						<y>
+							<noise type="gaussian">
+								<mean>0.0</mean>
+								<stddev>${gyro_noise_y}</stddev>
+								<bias_mean>0.0000075</bias_mean>
+								<bias_stddev>0.0000008</bias_stddev>
+							</noise>
+						</y>
+						<z>
+							<noise type="gaussian">
+								<mean>0.0</mean>
+								<stddev>${gyro_noise_z}</stddev>
+								<bias_mean>0.0000075</bias_mean>
+								<bias_stddev>0.0000008</bias_stddev>
+							</noise>
+						</z>
+					</angular_velocity>
+
+					<!-- 线加速度(加速度计)噪声模型 - XYZ三轴独立设置 -->
+					<linear_acceleration>
+						<x>
+							<noise type="gaussian">
+								<mean>0.0</mean>
+								<stddev>${accel_noise_x}</stddev>
+								<bias_mean>0.0000075</bias_mean>
+								<bias_stddev>0.0000008</bias_stddev>
+							</noise>
+						</x>
+						<y>
+							<noise type="gaussian">
+								<mean>0.0</mean>
+								<stddev>${accel_noise_y}</stddev>
+								<bias_mean>0.0000075</bias_mean>
+								<bias_stddev>0.0000008</bias_stddev>
+							</noise>
+						</y>
+						<z>
+							<noise type="gaussian">
+								<mean>0.0</mean>
+								<stddev>${accel_noise_z}</stddev>
+								<bias_mean>0.0000075</bias_mean>
+								<bias_stddev>0.0000008</bias_stddev>
+							</noise>
+						</z>
+					</linear_acceleration>
+
+				</imu>
+
+				<!-- 插件配置 -->
+				<plugin name="${name}_plugin" filename="libgazebo_ros_imu_sensor.so">
+					<ros>
+						<namespace>/</namespace>
+						<remapping>~/out:=${topic_name}</remapping>
+					</ros>
+
+					<!-- 话题设置 -->
+					<topic_name>${topic_name}</topic_name>
+
+					<!-- 坐标系 -->
+					<frame_name>${name}_link</frame_name>
+
+					<!-- TF设置 -->
+					<publish_tf>${publish_tf}</publish_tf>
+
+					<!-- 磁场设置 (可选, 设为0表示无磁场) -->
+					<mag_declination_deg>0</mag_declination_deg>
+
+					<!-- 不使用初始方向作为参考系 -->
+					<initial_orientation_as_reference>false</initial_orientation_as_reference>
+
+				</plugin>
+			</sensor>
+		</gazebo>
+
+	</xacro:macro>
+
+	<!--
+	简化版IMU传感器插件宏
+	只包含必要参数，其他使用默认值
+	-->
+	<xacro:macro name="imu_sensor_simple" params="name parent topic_name:='imu' update_rate:=100
+		xyz:='0 0 0' rpy:='0 0 0' always_on:=true">
+
+		<!-- 调用完整版宏，使用默认参数 -->
+		<xacro:imu_sensor
+			name="${name}"
+			parent="${parent}"
+			topic_name="${topic_name}"
+			update_rate="${update_rate}"
+			xyz="${xyz}"
+			rpy="${rpy}"
+			always_on="${always_on}"/>
+
+	</xacro:macro>
+
+</robot>
