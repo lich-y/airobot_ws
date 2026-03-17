@@ -1,0 +1,525 @@
+#!/usr/bin/env python3
+"""
+Auto SLAM Explorer Node for autonomous robot navigation.
+This node makes the robot explore randomly while avoiding obstacles,
+detects when mapping is complete, and returns to the starting point.
+Designed to work with Cartographer for automatic SLAM mapping.
+"""
+
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+
+from geometry_msgs.msg import Twist, PoseStamped
+from nav_msgs.msg import Odometry, OccupancyGrid
+from sensor_msgs.msg import LaserScan
+
+import math
+import random
+from enum import Enum
+
+
+class ExplorerState(Enum):
+    """Explorer states."""
+    EXPLORING = "exploring"
+    RETURNING = "returning"
+    FINISHED = "finished"
+
+
+class AutoSlamExplorer(Node):
+    """
+    Auto SLAM explorer node that controls robot for automatic mapping.
+    Features:
+    - Random exploration with obstacle avoidance
+    - Map coverage detection
+    - Return to starting point when mapping is complete
+    """
+    
+    def __init__(self):
+        super().__init__('auto_slam_explorer')
+        
+        # Declare parameters
+        self.declare_parameter('forward_speed', 0.25)
+        self.declare_parameter('turn_speed', 0.4)
+        # 障碍物检测距离：小车半径(~0.25m) + 安全余量(~0.2m) = 0.45m
+        self.declare_parameter('min_obstacle_distance', 0.45)
+        self.declare_parameter('change_direction_interval', 5.0)
+        self.declare_parameter('use_laser', True)
+        
+        # 智能障碍物躲避参数
+        self.declare_parameter('clear_path_distance', 0.6)  # 认为路径畅通的距离
+        
+        # SLAM completion parameters - use integer default for compatibility
+        self.declare_parameter('exploration_time', 120)  # seconds
+        self.declare_parameter('return_speed', 0.2)
+        self.declare_parameter('auto_return', True)
+        
+        # Get parameters
+        self.forward_speed = self.get_parameter('forward_speed').value
+        self.turn_speed = self.get_parameter('turn_speed').value
+        self.min_obstacle_distance = self.get_parameter('min_obstacle_distance').value
+        self.change_interval = self.get_parameter('change_direction_interval').value
+        self.use_laser = self.get_parameter('use_laser').value
+        self.exploration_time = self.get_parameter('exploration_time').value
+        self.return_speed = self.get_parameter('return_speed').value
+        self.auto_return = self.get_parameter('auto_return').value
+        
+        # State variables
+        self.state = ExplorerState.EXPLORING
+        self.current_direction = 'forward'
+        self.last_direction_change = self.get_clock().now()
+        self.obstacle_detected = False
+        self.obstacle_count = 0  # Consecutive obstacle detections
+        
+        # 智能障碍物躲避状态
+        self.is_rotating_to_find_path = False
+        self.rotation_direction = 1  # 1 = 左转, -1 = 右转
+        self.rotation_start_distance = 0.0  # 开始旋转时的障碍物距离
+        self.current_front_distance = float('inf')  # 当前前方障碍物距离
+        self.clear_path_distance = self.get_parameter('clear_path_distance').value
+        
+        # 地图探索状态
+        self.map_info = None  # 地图元数据
+        self.current_map_cell = None  # 当前所在的地图格子
+        self.is_in_explored_area = False  # 当前是否在已探索区域
+        
+        # Starting position (will be recorded when node starts)
+        self.start_x = 0.0
+        self.start_y = 0.0
+        self.start_yaw = 0.0
+        self.start_recorded = False
+        
+        # Current position
+        self.current_x = 0.0
+        self.current_y = 0.0
+        self.current_yaw = 0.0
+        
+        # Track position for stuck detection
+        self.last_check_x = 0.0
+        self.last_check_y = 0.0
+        self.last_check_time = None
+        self.stuck_count = 0
+        
+        # Map coverage tracking
+        self.explored_cells = set()
+        
+        # Timer
+        self.exploration_start_time = self.get_clock().now()
+        
+        # QoS profile
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=10
+        )
+        
+        # Publishers
+        self.cmd_vel_pub = self.create_publisher(
+            Twist,
+            '/cmd_vel',
+            qos_profile
+        )
+        
+        # Subscribers
+        self.odom_sub = self.create_subscription(
+            Odometry,
+            '/odom',
+            self.odom_callback,
+            qos_profile
+        )
+        
+        if self.use_laser:
+            self.scan_sub = self.create_subscription(
+                LaserScan,
+                '/scan',
+                self.scan_callback,
+                qos_profile
+            )
+        
+        # Subscribe to map for coverage tracking
+        self.map_sub = self.create_subscription(
+            OccupancyGrid,
+            '/map',
+            self.map_callback,
+            qos_profile
+        )
+        
+        # Timer for control loop
+        self.control_timer = self.create_timer(0.1, self.control_loop)
+        
+        # Status timer
+        self.status_timer = self.create_timer(5.0, self.print_status)
+        
+        self.get_logger().info('Auto SLAM Explorer node started')
+        self.get_logger().info(f'Exploration time: {self.exploration_time} seconds')
+        self.get_logger().info(f'Forward speed: {self.forward_speed}')
+        self.get_logger().info(f'Turn speed: {self.turn_speed}')
+        self.get_logger().info(f'Min obstacle distance: {self.min_obstacle_distance}')
+        
+    def odom_callback(self, msg):
+        """Process odometry data and track position."""
+        self.current_x = msg.pose.pose.position.x
+        self.current_y = msg.pose.pose.position.y
+        
+        # Extract yaw from quaternion
+        q = msg.pose.pose.orientation
+        siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+        cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+        self.current_yaw = math.atan2(siny_cosp, cosy_cosp)
+        
+        # Record starting position on first odometry message
+        if not self.start_recorded:
+            self.start_x = self.current_x
+            self.start_y = self.current_y
+            self.start_yaw = self.current_yaw
+            self.start_recorded = True
+            self.last_check_x = self.current_x
+            self.last_check_y = self.current_y
+            self.last_check_time = self.get_clock().now()
+            self.get_logger().info(f'Starting position recorded: ({self.start_x:.2f}, {self.start_y:.2f})')
+            
+    def scan_callback(self, msg):
+        """Process laser scan data for obstacle detection."""
+        if not self.use_laser:
+            return
+            
+        num_readings = len(msg.ranges)
+        if num_readings == 0:
+            return
+            
+        # Check only the narrow front sector (center 30 degrees)
+        start_idx = int(num_readings * 0.42)
+        end_idx = int(num_readings * 0.58)
+        
+        front_distances = [msg.ranges[i] for i in range(start_idx, end_idx) 
+                          if 0 < msg.ranges[i] < float('inf')]
+        
+        if front_distances:
+            self.current_front_distance = min(front_distances)
+            
+            # Use hysteresis - require multiple consecutive detections
+            if self.current_front_distance < self.min_obstacle_distance:
+                self.obstacle_count += 1
+                if self.obstacle_count >= 3:
+                    self.obstacle_detected = True
+            else:
+                self.obstacle_count = max(0, self.obstacle_count - 1)
+                if self.obstacle_count == 0:
+                    self.obstacle_detected = False
+        else:
+            self.current_front_distance = float('inf')
+            self.obstacle_count = max(0, self.obstacle_count - 1)
+            if self.obstacle_count == 0:
+                self.obstacle_detected = False
+                
+    def map_callback(self, msg):
+        """Process map data to track exploration coverage."""
+        # 保存地图元数据
+        self.map_info = {
+            'width': msg.info.width,
+            'height': msg.info.height,
+            'resolution': msg.info.resolution,
+            'origin': msg.info.origin.position
+        }
+        
+        if self.state != ExplorerState.EXPLORING:
+            return
+            
+        width = msg.info.width
+        height = msg.info.height
+        data = msg.data
+        
+        current_explored = set()
+        for i in range(len(data)):
+            if data[i] >= 0:
+                row = i // width
+                col = i % width
+                current_explored.add((row, col))
+        
+        new_cells = current_explored - self.explored_cells
+        if len(new_cells) > 10:
+            self.last_map_update_time = self.get_clock().now()
+            
+        self.explored_cells = current_explored
+        
+        # 检查当前位置是否在已探索区域
+        self.update_current_map_cell(data, width)
+        
+    def update_current_map_cell(self, data, width):
+        """Update the current map cell based on robot position."""
+        if not self.start_recorded or self.map_info is None:
+            return
+            
+        # 将机器人位置转换为地图格子坐标
+        origin = self.map_info['origin']
+        resolution = self.map_info['resolution']
+        
+        # 计算相对于原点的位置
+        rel_x = self.current_x - origin.x
+        rel_y = self.current_y - origin.y
+        
+        # 转换为格子坐标
+        col = int(rel_x / resolution)
+        row = int(rel_y / resolution)
+        
+        # 检查是否在地图范围内
+        if 0 <= row < self.map_info['height'] and 0 <= col < self.map_info['width']:
+            self.current_map_cell = (row, col)
+            idx = row * width + col
+            # -1 表示未知区域，0-100 表示已探索
+            if idx < len(data) and data[idx] >= 0:
+                self.is_in_explored_area = True
+            else:
+                self.is_in_explored_area = False
+        else:
+            self.current_map_cell = None
+        
+    def check_stuck(self):
+        """Check if robot is stuck (not moving)."""
+        if not self.start_recorded or self.last_check_time is None:
+            return False
+            
+        current_time = self.get_clock().now()
+        time_diff = (current_time - self.last_check_time).nanoseconds / 1e9
+        
+        if time_diff >= 2.0:  # Check every 2 seconds
+            dist = math.sqrt(
+                (self.current_x - self.last_check_x) ** 2 + 
+                (self.current_y - self.last_check_y) ** 2
+            )
+            
+            if dist < 0.05:  # Less than 5cm movement in 2 seconds
+                self.stuck_count += 1
+                if self.stuck_count >= 2:
+                    self.get_logger().warn('Robot appears stuck! Attempting to recover...')
+                    self.stuck_count = 0
+                    return True
+            else:
+                self.stuck_count = 0
+                
+            self.last_check_x = self.current_x
+            self.last_check_y = self.current_y
+            self.last_check_time = current_time
+            
+        return False
+        
+    def check_exploration_complete(self):
+        """Check if exploration is complete."""
+        # Don't complete if starting position not recorded yet
+        if not self.start_recorded:
+            return False
+            
+        current_time = self.get_clock().now()
+        elapsed = (current_time - self.exploration_start_time).nanoseconds / 1e9
+        
+        # Only check time-based completion if exploration_time > 0
+        if self.exploration_time > 0 and elapsed >= float(self.exploration_time):
+            self.get_logger().info(f'Exploration time ({elapsed:.1f}s) completed!')
+            return True
+        
+        if self.auto_return and self.state == ExplorerState.RETURNING:
+            dist_to_start = math.sqrt(
+                (self.current_x - self.start_x) ** 2 + 
+                (self.current_y - self.start_y) ** 2
+            )
+            if dist_to_start < 0.3:
+                return True
+                
+        return False
+        
+    def control_loop(self):
+        """Main control loop."""
+        if self.state == ExplorerState.EXPLORING:
+            self.explore()
+            
+            if self.check_exploration_complete():
+                if self.auto_return:
+                    self.get_logger().info('Exploration complete! Starting return to home...')
+                    self.state = ExplorerState.RETURNING
+                else:
+                    self.get_logger().info('Exploration complete! Stopping.')
+                    self.state = ExplorerState.FINISHED
+                    self.publish_stop()
+                    
+        elif self.state == ExplorerState.RETURNING:
+            self.return_to_home()
+            
+        elif self.state == ExplorerState.FINISHED:
+            self.publish_stop()
+            
+    def explore(self):
+        """Exploration behavior with smart obstacle avoidance."""
+        # Debug: log if not started
+        if not self.start_recorded:
+            self.get_logger().debug('Waiting for odometry data...')
+            return
+            
+        current_time = self.get_clock().now()
+        time_since_change = (current_time - self.last_direction_change).nanoseconds / 1e9
+        
+        # Check if stuck
+        is_stuck = self.check_stuck()
+        
+        # 智能障碍物躲避逻辑
+        if self.is_rotating_to_find_path:
+            # 正在旋转寻找路径
+            if self.current_front_distance >= self.clear_path_distance:
+                # 找到畅通路径，停止旋转，开始前进
+                self.get_logger().info(f'Found clear path! Distance: {self.current_front_distance:.2f}m')
+                self.is_rotating_to_find_path = False
+                self.current_direction = 'forward'
+                self.last_direction_change = current_time
+            elif self.current_front_distance < self.rotation_start_distance - 0.1:
+                # 障碍物变近了，反向旋转
+                self.rotation_direction *= -1
+                self.rotation_start_distance = self.current_front_distance
+                self.get_logger().info(f'Obstacle closer ({self.current_front_distance:.2f}m), reversing rotation')
+        elif self.obstacle_detected or is_stuck:
+            # 检测到障碍物，开始旋转寻找路径
+            self.is_rotating_to_find_path = True
+            self.rotation_start_distance = self.current_front_distance
+            # 随机选择初始旋转方向
+            self.rotation_direction = 1 if random.random() < 0.5 else -1
+            self.get_logger().info(f'Obstacle detected! Start rotating to find path. Initial distance: {self.current_front_distance:.2f}m')
+        elif time_since_change > self.change_interval:
+            # 在已探索区域时，增加换方向的几率
+            if self.is_in_explored_area and self.current_map_cell:
+                # 已探索区域，给予更高几率换方向探索新区域
+                if random.random() < 0.7:  # 70% 几率换方向
+                    self.change_exploration_direction()
+                    self.last_direction_change = current_time
+                    self.get_logger().info(f'In explored area, changing direction to find new areas')
+            else:
+                # 正常方向切换
+                self.change_exploration_direction()
+                self.last_direction_change = current_time
+            # 正常方向切换
+            self.change_exploration_direction()
+            self.last_direction_change = current_time
+            
+        # Publish velocity command
+        twist = Twist()
+        
+        if self.is_rotating_to_find_path:
+            # 原地旋转寻找路径
+            twist.linear.x = 0.0
+            twist.angular.z = self.turn_speed * self.rotation_direction
+        elif self.current_direction == 'forward':
+            twist.linear.x = self.forward_speed
+            twist.angular.z = 0.0
+        elif self.current_direction == 'turn_left':
+            twist.linear.x = self.forward_speed * 0.3
+            twist.angular.z = self.turn_speed
+        elif self.current_direction == 'turn_right':
+            twist.linear.x = self.forward_speed * 0.3
+            twist.angular.z = -self.turn_speed
+        elif self.current_direction == 'backward':
+            twist.linear.x = -self.forward_speed * 0.5
+            twist.angular.z = 0.0
+        elif self.current_direction == 'stop':
+            twist.linear.x = 0.0
+            twist.angular.z = 0.0
+            
+        self.cmd_vel_pub.publish(twist)
+        
+    def change_exploration_direction(self):
+        """Change exploration direction with improved logic."""
+        if self.obstacle_detected or self.check_stuck():
+            # When obstacle detected, prefer turning in the direction with more space
+            # Use a simple approach: random but favor turning
+            choices = ['turn_left', 'turn_right', 'backward']
+            self.current_direction = random.choice(choices)
+            self.get_logger().debug(f'Obstacle detected, choosing: {self.current_direction}')
+        else:
+            # Normal random direction change - favor forward movement
+            choice = random.random()
+            if choice < 0.65:
+                self.current_direction = 'forward'
+            elif choice < 0.82:
+                self.current_direction = 'turn_left'
+            else:
+                self.current_direction = 'turn_right'
+                
+    def return_to_home(self):
+        """Return to the starting position."""
+        dx = self.start_x - self.current_x
+        dy = self.start_y - self.current_y
+        dist_to_start = math.sqrt(dx * dx + dy * dy)
+        
+        target_angle = math.atan2(dy, dx)
+        angle_diff = target_angle - self.current_yaw
+        
+        while angle_diff > math.pi:
+            angle_diff -= 2 * math.pi
+        while angle_diff < -math.pi:
+            angle_diff += 2 * math.pi
+            
+        twist = Twist()
+        
+        if dist_to_start > 0.3:
+            if abs(angle_diff) > 0.2:
+                twist.linear.x = 0.0
+                twist.angular.z = self.return_speed if angle_diff > 0 else -self.return_speed
+            else:
+                twist.linear.x = min(self.return_speed, dist_to_start)
+                twist.angular.z = 0.0
+        else:
+            twist.linear.x = 0.0
+            twist.angular.z = 0.0
+            self.get_logger().info('Returned to starting position!')
+            self.state = ExplorerState.FINISHED
+            
+        self.cmd_vel_pub.publish(twist)
+        
+    def publish_stop(self):
+        """Publish stop command."""
+        twist = Twist()
+        twist.linear.x = 0.0
+        twist.angular.z = 0.0
+        self.cmd_vel_pub.publish(twist)
+        
+    def print_status(self):
+        """Print current status."""
+        elapsed = (self.get_clock().now() - self.exploration_start_time).nanoseconds / 1e9
+        
+        if self.state == ExplorerState.EXPLORING:
+            dist = math.sqrt(
+                (self.current_x - self.start_x) ** 2 + 
+                (self.current_y - self.start_y) ** 2
+            ) if self.start_recorded else 0
+            
+            area_status = "EXPLORED" if self.is_in_explored_area else "NEW"
+            self.get_logger().info(
+                f'Status: {self.state.value} | Time: {elapsed:.1f}s | '
+                f'Direction: {self.current_direction} | '
+                f'Area: {area_status} | '
+                f'Explored cells: {len(self.explored_cells)} | '
+                f'Distance: {dist:.2f}m'
+            )
+        elif self.state == ExplorerState.RETURNING:
+            dist = math.sqrt(
+                (self.current_x - self.start_x) ** 2 + 
+                (self.current_y - self.start_y) ** 2
+            )
+            self.get_logger().info(f'Status: RETURNING | Distance to home: {dist:.2f}m')
+        elif self.state == ExplorerState.FINISHED:
+            self.get_logger().info('Status: FINISHED')
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    explorer = AutoSlamExplorer()
+    
+    try:
+        rclpy.spin(explorer)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        twist = Twist()
+        explorer.cmd_vel_pub.publish(twist)
+        explorer.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
