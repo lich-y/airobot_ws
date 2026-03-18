@@ -1,18 +1,19 @@
 """
-Auto SLAM Launch File
-Launches Gazebo simulation, Cartographer SLAM, and random exploration
-for automatic robot mapping.
+Auto SLAM Launch File with Livox Lidar
+Launches Gazebo simulation, Cartographer SLAM, pointcloud to laserscan conversion,
+and random exploration for automatic robot mapping.
 
 This launch file includes:
-- gazebo_sim.launch.py: Gazebo simulation with robot
+- gazebo_sim.launch.py: Gazebo simulation with robot (using Livox 3D lidar)
 - cartographer.launch.py: Cartographer SLAM nodes
+- pointcloud_to_laserscan: Convert 3D pointcloud to 2D laser scan
 - explore_node: Random exploration with auto-return
 
 Usage:
-    ros2 launch airobot_simulation auto_slam.launch.py
+    ros2 launch airobot_simulation auto_slam_livox.launch.py
 
 Or with parameters:
-    ros2 launch airobot_simulation auto_slam.launch.py world_file:=/path/to/world.world
+    ros2 launch airobot_simulation auto_slam_livox.launch.py world_file:=/path/to/world.world
 """
 
 import os
@@ -28,10 +29,12 @@ def generate_launch_description():
     # Package names
     sim_pkg_name = 'airobot_simulation'
     carto_pkg_name = 'airobot_cartographer'
+    pc_to_laser_pkg_name = 'pc_to_laserscan'
     
     # Get package share directories
     sim_pkg_share = get_package_share_directory(sim_pkg_name)
     carto_pkg_share = get_package_share_directory(carto_pkg_name)
+    pc_to_laser_pkg_share = get_package_share_directory(pc_to_laser_pkg_name)
     
     # ===================== Declare launch arguments =====================
     
@@ -51,6 +54,38 @@ def generate_launch_description():
         'use_sim_time',
         default_value='true',
         description='Use simulation time'
+    )
+    
+    # URDF arguments for Livox lidar
+    urdf_file_arg = DeclareLaunchArgument(
+        'urdf_file',
+        default_value=os.path.join(sim_pkg_share, 'urdf', 'airobot', 'airobot.urdf.xacro'),
+        description='URDF file path'
+    )
+    
+    laser_type_arg = DeclareLaunchArgument(
+        'laser_type',
+        default_value='3d',
+        description='Laser type: 2d=2D lidar, 3d=Livox 3D lidar'
+    )
+    
+    # PointCloud to LaserScan arguments
+    input_pointcloud_topic_arg = DeclareLaunchArgument(
+        'input_pointcloud_topic',
+        default_value='/livox/lidar',
+        description='Input pointcloud topic from lidar'
+    )
+    
+    output_scan_topic_arg = DeclareLaunchArgument(
+        'output_scan_topic',
+        default_value='/scan',
+        description='Output laser scan topic'
+    )
+    
+    target_frame_arg = DeclareLaunchArgument(
+        'target_frame',
+        default_value='laser_link',
+        description='Target frame for the laser scan'
     )
     
     # Exploration parameters
@@ -87,18 +122,20 @@ def generate_launch_description():
     
     # ===================== Include existing launch files =====================
     
-    # Include Gazebo simulation launch
+    # Include Gazebo simulation launch with Livox lidar URDF
     gazebo_sim_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(sim_pkg_share, 'launch', 'gazebo_sim.launch.py')
         ),
         launch_arguments=[
             ('world_file', LaunchConfiguration('world_file')),
+            ('urdf_file', LaunchConfiguration('urdf_file')),
             ('spawn_x', LaunchConfiguration('spawn_x')),
             ('spawn_y', LaunchConfiguration('spawn_y')),
             ('spawn_z', LaunchConfiguration('spawn_z')),
             ('spawn_yaw', LaunchConfiguration('spawn_yaw')),
             ('use_sim_time', LaunchConfiguration('use_sim_time')),
+            ('laser_type', LaunchConfiguration('laser_type')),
         ]
     )
     
@@ -110,6 +147,33 @@ def generate_launch_description():
         launch_arguments=[
             ('use_sim_time', LaunchConfiguration('use_sim_time')),
         ]
+    )
+    
+    # ===================== PointCloud to LaserScan Node =====================
+    
+    pc_to_scan_node = Node(
+        package='pointcloud_to_laserscan',
+        executable='pointcloud_to_laserscan_node',
+        name='pointcloud_to_laserscan',
+        output='screen',
+        parameters=[{
+            'input_pointcloud_topic': LaunchConfiguration('input_pointcloud_topic'),
+            'output_scan_topic': LaunchConfiguration('output_scan_topic'),
+            'target_frame': LaunchConfiguration('target_frame'),
+            'transform_tolerance': 0.01,
+            'min_height': 0.0,
+            'max_height': 1.0,
+            'angle_min': -3.14159,  # -PI
+            'angle_max': 3.14159,   # PI
+            'angle_increment': 0.0087,  # ~0.5 degree
+            'scan_time': 0.1,
+            'range_min': 0.1,
+            'range_max': 50.0,
+            'inf_epsilon': 1.0,
+        }],
+        remappings=[
+            ('/cloud_in', LaunchConfiguration('input_pointcloud_topic')),
+        ],
     )
     
     # ===================== Random Exploration Node =====================
@@ -142,17 +206,25 @@ def generate_launch_description():
         spawn_z_arg,
         spawn_yaw_arg,
         use_sim_time_arg,
+        urdf_file_arg,
+        laser_type_arg,
+        input_pointcloud_topic_arg,
+        output_scan_topic_arg,
+        target_frame_arg,
         forward_speed_arg,
         turn_speed_arg,
         exploration_time_arg,
         return_speed_arg,
         auto_return_arg,
         
-        # Include Gazebo simulation (includes robot spawning)
+        # Include Gazebo simulation (includes robot spawning with Livox lidar)
         gazebo_sim_launch,
         
         # Include Cartographer SLAM
         cartographer_launch,
+        
+        # PointCloud to LaserScan conversion node
+        pc_to_scan_node,
         
         # Random exploration node with auto-return
         explore_node,
