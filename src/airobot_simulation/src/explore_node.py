@@ -49,8 +49,8 @@ class AutoSlamExplorer(Node):
         # 智能障碍物躲避参数
         self.declare_parameter('clear_path_distance', 0.6)  # 认为路径畅通的距离
         
-        # SLAM completion parameters - use integer default for compatibility
-        self.declare_parameter('exploration_time', 120)  # seconds
+        # SLAM completion parameters
+        self.declare_parameter('exploration_time', 120.0)  # seconds
         self.declare_parameter('return_speed', 0.2)
         self.declare_parameter('auto_return', True)
         

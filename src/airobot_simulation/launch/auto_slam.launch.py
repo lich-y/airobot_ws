@@ -116,7 +116,7 @@ def generate_launch_description():
     
     explore_node = Node(
         package='airobot_simulation',
-        executable='explore_node',
+        executable='explore_node.py',
         name='auto_slam_explorer',
         output='screen',
         parameters=[{

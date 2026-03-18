@@ -17,7 +17,7 @@ find_package(geometry_msgs REQUIRED)
 
 # Install Python scripts
 install(PROGRAMS 
-  src/explore_node
+  src/explore_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
