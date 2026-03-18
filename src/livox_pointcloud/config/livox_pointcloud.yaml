@@ -1,0 +1,5 @@
+# Livox PointCloud Converter Configuration
+input_topic: '/livox/points_raw'
+output_topic: '/livox/points'
+frame_id: 'livox_frame'
+publish_rate: 10.0

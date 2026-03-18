@@ -1,0 +1,60 @@
+###########################################################
+#                                                         #
+# Copyright (c)                                           #
+#                                                         #
+# The Verifiable & Control-Theoretic Robotics (VECTR) Lab #
+# University of California, Los Angeles                   #
+#                                                         #
+# Authors: Kenny J. Chen, Ryan Nemiroff, Brett T. Lopez   #
+# Contact: {kennyjchen, ryguyn, btlopez}@ucla.edu         #
+#                                                         #
+###########################################################
+
+/**:
+  ros__parameters:
+    use_sim_time: false
+    frames/odom: odom
+    frames/baselink: base_link
+    frames/lidar: livox_frame
+    frames/imu: livox_frame
+
+    map/waitUntilMove: false  # Changed to false to publish deskewed cloud even when robot is stationary
+    map/dense/filtered: false
+    map/sparse/leafSize: 0.25
+
+    odom/gravity: 9.80665
+    odom/computeTimeOffset: true
+    
+    # 2D TF 发布模式：去掉 roll/pitch，z=0，解决代价地图倾斜问题
+    odom/publish_2d_tf: true  # 设为 true 启用 2D TF（推荐用于 2D 导航）
+
+    odom/imu/approximateGravity: true  # 开启重力对齐，防止Z轴倾斜
+    odom/imu/calibration/gyro: true
+    odom/imu/calibration/accel: true
+    odom/imu/calibration/time: 3.0
+    odom/imu/bufferSize: 5000
+
+    odom/preprocessing/cropBoxFilter/size: 0.4
+    odom/preprocessing/voxelFilter/res: 0.25
+
+    odom/keyframe/threshD: 1.0  # Restored to default (using deskewed cloud now, not keyframes)
+    odom/keyframe/threshR: 45.0  # Restored to default
+
+    odom/submap/keyframe/knn: 10
+    odom/submap/keyframe/kcv: 10
+    odom/submap/keyframe/kcc: 10
+    odom/gicp/minNumPoints: 64
+    odom/gicp/kCorrespondences: 16
+    odom/gicp/maxCorrespondenceDistance: 0.5
+    odom/gicp/maxIterations: 32
+    odom/gicp/transformationEpsilon: 0.01
+    odom/gicp/rotationEpsilon: 0.01
+    odom/gicp/initLambdaFactor: 1e-9
+
+    odom/geo/Kp: 4.5
+    odom/geo/Kv: 11.25
+    odom/geo/Kq: 4.0
+    odom/geo/Kab: 2.25
+    odom/geo/Kgb: 1.0
+    odom/geo/abias_max: 5.0
+    odom/geo/gbias_max: 0.5
