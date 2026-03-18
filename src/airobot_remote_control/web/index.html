@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>机器人遥控器 - HTTP版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+            transition: background 0.3s;
+        }
+
+        .status-dot.connected {
+            background: #44ff44;
+            box-shadow: 0 0 10px #44ff44;
+        }
+
+        .velocity-display {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #00ff88;
+        }
+
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .d-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 70px);
+            grid-template-rows: repeat(3, 70px);
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 24px;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn:active, .btn.pressed {
+            transform: scale(0.95);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .btn-arrow {
+            background: linear-gradient(145deg, #4a5568, #2d3748);
+            color: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        .btn-arrow:hover {
+            background: linear-gradient(145deg, #5a6578, #3d4758);
+        }
+
+        .btn-arrow:active, .btn-arrow.pressed {
+            background: linear-gradient(145deg, #2d3748, #4a5568);
+        }
+
+        .btn-empty {
+            background: transparent;
+        }
+
+        .btn-forward { grid-column: 2; grid-row: 1; }
+        .btn-left { grid-column: 1; grid-row: 2; }
+        .btn-backward { grid-column: 2; grid-row: 3; }
+        .btn-right { grid-column: 3; grid-row: 2; }
+
+        .btn-forward::after { content: "⬆"; }
+        .btn-left::after { content: "⬅"; }
+        .btn-backward::after { content: "⬇"; }
+        .btn-right::after { content: "➡"; }
+
+        .btn-stop {
+            grid-column: 2;
+            grid-row: 2;
+            background: linear-gradient(145deg, #e53e3e, #c53030);
+            color: #fff;
+            font-size: 18px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .btn-stop:hover {
+            background: linear-gradient(145deg, #f56565, #e53e3e);
+        }
+
+        .btn-stop:active, .btn-stop.pressed {
+            background: linear-gradient(145deg, #c53030, #e53e3e);
+        }
+
+        .settings-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .setting-label {
+            min-width: 100px;
+            font-size: 14px;
+            color: #a0aec0;
+        }
+
+        .setting-value {
+            font-family: 'Courier New', monospace;
+            min-width: 60px;
+            text-align: right;
+            color: #00ff88;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 8px;
+            -webkit-appearance: none;
+            background: #2d3748;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #4299e1, #3182ce);
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #4299e1, #3182ce);
+            cursor: pointer;
+            border: none;
+        }
+
+        .keyboard-hint {
+            text-align: center;
+            font-size: 12px;
+            color: #718096;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .keyboard-hint kbd {
+            background: #2d3748;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 0 3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .direction-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        .direction-item {
+            text-align: center;
+        }
+
+        .direction-label {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .direction-value {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            color: #00ff88;
+        }
+
+        .server-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .server-input input {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .server-input input::placeholder {
+            color: #718096;
+        }
+
+        .server-input button {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #4299e1;
+            color: #fff;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .server-input button:hover {
+            background: #3182ce;
+        }
+    </style>
+</head>
+<body>
+    <h1>🤖 机器人遥控器</h1>
+    
+    <div class="container">
+        <div class="server-input">
+            <input type="text" id="apiServer" placeholder="API服务器地址 (http://localhost:5000)" value="http://localhost:5000">
+            <button onclick="checkConnection()">连接</button>
+        </div>
+
+        <div class="status-bar">
+            <div class="connection-status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">未连接</span>
+            </div>
+            <div class="velocity-display">
+                线速度: <span id="currentLinear">0.00</span> m/s | 角速度: <span id="currentAngular">0.00</span> rad/s
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="d-pad">
+                <button class="btn btn-arrow btn-forward" id="btnForward" onmousedown="startMove('forward')" onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove('forward')" ontouchend="stopMove()"></button>
+                <button class="btn btn-arrow btn-left" id="btnLeft" onmousedown="startRotate('left')" onmouseup="stopRotate()" onmouseleave="stopRotate()" ontouchstart="startRotate('left')" ontouchend="stopRotate()"></button>
+                <button class="btn btn-stop" id="btnStop" onmousedown="stop()" ontouchstart="stop()">停止</button>
+                <button class="btn btn-arrow btn-right" id="btnRight" onmousedown="startRotate('right')" onmouseup="stopRotate()" onmouseleave="stopRotate()" ontouchstart="startRotate('right')" ontouchend="stopRotate()"></button>
+                <button class="btn btn-arrow btn-backward" id="btnBackward" onmousedown="startMove('backward')" onmouseup="stopMove()" onmouseleave="stopMove()" ontouchstart="startMove('backward')" ontouchend="stopMove()"></button>
+            </div>
+
+            <div class="settings-panel">
+                <div class="setting-row">
+                    <span class="setting-label">线速度 (m/s)</span>
+                    <input type="range" id="linearSpeed" min="0.05" max="1.0" step="0.05" value="0.3" oninput="updateSettings()">
+                    <span class="setting-value" id="linearSpeedValue">0.30</span>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">角速度 (rad/s)</span>
+                    <input type="range" id="angularSpeed" min="0.1" max="2.0" step="0.1" value="0.5" oninput="updateSettings()">
+                    <span class="setting-value" id="angularSpeedValue">0.50</span>
+                </div>
+            </div>
+
+            <div class="direction-indicator">
+                <div class="direction-item">
+                    <div class="direction-label">前进/后退</div>
+                    <div class="direction-value" id="linearDir">停止</div>
+                </div>
+                <div class="direction-item">
+                    <div class="direction-label">左转/右转</div>
+                    <div class="direction-value" id="angularDir">停止</div>
+                </div>
+            </div>
+
+            <div class="keyboard-hint">
+                使用 <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> 键控制移动<br>
+                <kbd>空格</kbd> 键紧急停止
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let apiBase = 'http://localhost:5000';
+        let isConnected = false;
+        
+        // 当前速度和状态
+        let currentLinear = 0;
+        let currentAngular = 0;
+        let linearSpeed = 0.3;
+        let angularSpeed = 0.5;
+        
+        // 按键状态
+        let keyForward = false;
+        let keyBackward = false;
+        let keyLeft = false;
+        let keyRight = false;
+
+        // 更新API地址
+        function updateApiBase() {
+            apiBase = document.getElementById('apiServer').value;
+        }
+
+        // 检查连接
+        async function checkConnection() {
+            updateApiBase();
+            
+            try {
+                const response = await fetch(`${apiBase}/status`, {
+                    method: 'GET',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    isConnected = true;
+                    document.getElementById('statusDot').classList.add('connected');
+                    document.getElementById('statusText').textContent = '已连接';
+                    updateStatusDisplay(data);
+                } else {
+                    throw new Error('Server returned error');
+                }
+            } catch (error) {
+                console.error('Connection error:', error);
+                isConnected = false;
+                document.getElementById('statusDot').classList.remove('connected');
+                document.getElementById('statusText').textContent = '连接失败';
+            }
+        }
+
+        // 更新状态显示
+        function updateStatusDisplay(data) {
+            document.getElementById('currentLinear').textContent = (data.linear || 0).toFixed(2);
+            document.getElementById('currentAngular').textContent = (data.angular || 0).toFixed(2);
+        }
+
+        // 发送速度命令
+        async function sendVelocity(linear, angular) {
+            if (!isConnected) {
+                console.warn('Not connected to server');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${apiBase}/cmd_vel`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        linear: linear,
+                        angular: angular
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentLinear = data.linear;
+                    currentAngular = data.angular;
+                    updateDisplay();
+                }
+            } catch (error) {
+                console.error('Failed to send command:', error);
+            }
+        }
+
+        // 发送停止命令
+        async function sendStop() {
+            if (!isConnected) {
+                console.warn('Not connected to server');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${apiBase}/stop`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                if (response.ok) {
+                    currentLinear = 0;
+                    currentAngular = 0;
+                    updateDisplay();
+                }
+            } catch (error) {
+                console.error('Failed to send stop command:', error);
+            }
+        }
+
+        // 更新显示
+        function updateDisplay() {
+            document.getElementById('currentLinear').textContent = currentLinear.toFixed(2);
+            document.getElementById('currentAngular').textContent = currentAngular.toFixed(2);
+            
+            let linearDir = '停止';
+            if (currentLinear > 0) linearDir = '前进 ↑';
+            else if (currentLinear < 0) linearDir = '后退 ↓';
+            
+            let angularDir = '停止';
+            if (currentAngular > 0) angularDir = '右转 ↻';
+            else if (currentAngular < 0) angularDir = '左转 ↺';
+            
+            document.getElementById('linearDir').textContent = linearDir;
+            document.getElementById('angularDir').textContent = angularDir;
+        }
+
+        // 更新设置
+        function updateSettings() {
+            linearSpeed = parseFloat(document.getElementById('linearSpeed').value);
+            angularSpeed = parseFloat(document.getElementById('angularSpeed').value);
+            
+            document.getElementById('linearSpeedValue').textContent = linearSpeed.toFixed(2);
+            document.getElementById('angularSpeedValue').textContent = angularSpeed.toFixed(2);
+        }
+
+        // 开始移动
+        function startMove(direction) {
+            if (direction === 'forward') {
+                currentLinear = linearSpeed;
+                document.getElementById('btnForward').classList.add('pressed');
+            } else if (direction === 'backward') {
+                currentLinear = -linearSpeed;
+                document.getElementById('btnBackward').classList.add('pressed');
+            }
+            currentAngular = 0;
+            sendVelocity(currentLinear, currentAngular);
+            updateDisplay();
+        }
+
+        // 停止移动
+        function stopMove() {
+            currentLinear = 0;
+            document.getElementById('btnForward').classList.remove('pressed');
+            document.getElementById('btnBackward').classList.remove('pressed');
+            sendVelocity(currentLinear, currentAngular);
+            updateDisplay();
+        }
+
+        // 开始旋转
+        function startRotate(direction) {
+            if (direction === 'left') {
+                currentAngular = angularSpeed;
+                document.getElementById('btnLeft').classList.add('pressed');
+            } else if (direction === 'right') {
+                currentAngular = -angularSpeed;
+                document.getElementById('btnRight').classList.add('pressed');
+            }
+            currentLinear = 0;
+            sendVelocity(currentLinear, currentAngular);
+            updateDisplay();
+        }
+
+        // 停止旋转
+        function stopRotate() {
+            currentAngular = 0;
+            document.getElementById('btnLeft').classList.remove('pressed');
+            document.getElementById('btnRight').classList.remove('pressed');
+            sendVelocity(currentLinear, currentAngular);
+            updateDisplay();
+        }
+
+        // 停止
+        function stop() {
+            currentLinear = 0;
+            currentAngular = 0;
+            document.getElementById('btnStop').classList.add('pressed');
+            setTimeout(() => {
+                document.getElementById('btnStop').classList.remove('pressed');
+            }, 150);
+            
+            // 清除所有按键状态
+            keyForward = false;
+            keyBackward = false;
+            keyLeft = false;
+            keyRight = false;
+            
+            sendStop();
+            updateDisplay();
+        }
+
+        // 键盘事件处理
+        document.addEventListener('keydown', function(e) {
+            // 阻止默认行为（防止页面滚动）
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+                e.preventDefault();
+            }
+            
+            if (e.key === 'ArrowUp' && !keyForward) {
+                keyForward = true;
+                startMove('forward');
+            } else if (e.key === 'ArrowDown' && !keyBackward) {
+                keyBackward = true;
+                startMove('backward');
+            } else if (e.key === 'ArrowLeft' && !keyLeft) {
+                keyLeft = true;
+                startRotate('left');
+            } else if (e.key === 'ArrowRight' && !keyRight) {
+                keyRight = true;
+                startRotate('right');
+            } else if (e.key === ' ') {
+                stop();
+            }
+        });
+
+        document.addEventListener('keyup', function(e) {
+            if (e.key === 'ArrowUp') {
+                keyForward = false;
+                if (!keyBackward) stopMove();
+            } else if (e.key === 'ArrowDown') {
+                keyBackward = false;
+                if (!keyForward) stopMove();
+            } else if (e.key === 'ArrowLeft') {
+                keyLeft = false;
+                if (!keyRight) stopRotate();
+            } else if (e.key === 'ArrowRight') {
+                keyRight = false;
+                if (!keyLeft) stopRotate();
+            }
+        });
+
+        // 页面卸载时停止机器人
+        window.addEventListener('beforeunload', function() {
+            if (isConnected) {
+                sendStop();
+            }
+        });
+
+        // 初始化设置显示
+        updateSettings();
+        
+        // 尝试自动连接
+        setTimeout(checkConnection, 500);
+    </script>
+</body>
+</html>
