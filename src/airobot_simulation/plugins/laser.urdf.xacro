@@ -3,10 +3,15 @@
 
 	<!--
 	激光雷达传感器插件 (Laser Sensor Plugin) 用于 Gazebo 仿真
-	
+
+	支持两种类型:
+	- laser_type:="2d" - 传统2D激光雷达 (默认)
+	- laser_type:="3d" - Livox 3D激光雷达
+
 	参数说明:
 	- name: 传感器名称
 	- parent: 父链接名称
+	- laser_type: 激光雷达类型 (2d 或 3d, 默认: 2d)
 	- topic_name: 激光扫描数据发布的话题名称 (默认: scan)
 	- frame_id: 传感器坐标系 ID (默认: laser_link)
 	- update_rate: 更新频率 (Hz, 默认: 10)
@@ -16,28 +21,30 @@
 	- ray_range_resolution: 测距分辨率 (默认: 0.01)
 	- ray_angle_min: 最小扫描角度 (弧度, 默认: -3.14159)
 	- ray_angle_max: 最大扫描角度 (弧度, 默认: 3.14159)
-	- ray_angle_increment: 角度增量 (弧度, 默认: 0.0175)
-	-xyz: 传感器相对于父链接的位置 (默认: 0 0 0)
+	- xyz: 传感器相对于父链接的位置 (默认: 0 0 0)
 	- rpy: 传感器的姿态 (默认: 0 0 0)
-	- publish_tf: 是否发布 TF (默认: true)
 	- visualize: 是否显示激光扫描可视化 (默认: true)
 	- always_on: 传感器是否始终启用 (默认: true)
+
+	3D (Livox) 专用参数:
+	- vertical_samples: 垂直射线数量 (默认: 16)
+	- vertical_angle_min: 最小垂直角度 (弧度, 默认: -0.523 = -30°)
+	- vertical_angle_max: 最大垂直角度 (弧度, 默认: 0.523 = 30°)
 	-->
 
 	<!--
-	完整版激光雷达插件宏
-	包含所有可配置参数
+	2D 激光雷达插件宏
 	-->
-	<xacro:macro name="laser_sensor" params="name parent
-		topic_name:='scan' 
+	<xacro:macro name="laser_sensor_2d" params="name parent
+		topic_name:='scan'
 		update_rate:=10
 		ray_count:=360
 		ray_range_min:=0.10 ray_range_max:=10.0 ray_range_resolution:=0.01
-		ray_angle_min:=-3.14159 ray_angle_max:=3.14159 ray_angle_increment:=0.0175
+		ray_angle_min:=-3.14159 ray_angle_max:=3.14159
 		xyz:='0 0 0' rpy:='0 0 0'
-		publish_tf:=true visualize:=true always_on:=true">
+		visualize:=true always_on:=true">
 
-		<!-- Gazebo 激光雷达传感器插件 -->
+		<!-- Gazebo 2D 激光雷达传感器插件 -->
 		<gazebo reference="${name}_link">
 			<pose>${xyz} ${rpy}</pose>
 			<sensor type="ray" name="${name}">
@@ -50,7 +57,7 @@
 				<always_on>${always_on}</always_on>
 				<visualize>${visualize}</visualize>
 
-				<!-- 激光射线配置 -->
+				<!-- 2D 激光射线配置 (只有水平扫描) -->
 				<ray>
 					<scan>
 						<horizontal>
@@ -82,7 +89,7 @@
 					<!-- 话题设置 -->
 					<topic_name>${topic_name}</topic_name>
 
-					<!-- 输出类型 -->
+					<!-- 输出类型: 2D LaserScan -->
 					<output_type>sensor_msgs/LaserScan</output_type>
 
 					<!-- 坐标系 -->
@@ -94,16 +101,152 @@
 	</xacro:macro>
 
 	<!--
-	简化版激光雷达插件宏
-	只包含必要参数，其他使用默认值
+	Livox 3D 激光雷达插件宏
+	支持 Livox Horizon, Mid-40, Mid-70 等型号
 	-->
-	<xacro:macro name="laser_sensor_simple" params="name parent topic_name:='scan' update_rate:=10
+	<xacro:macro name="laser_sensor_3d" params="name parent
+		topic_name:='livox/lidar'
+		update_rate:=10
+		ray_range_min:=0.10 ray_range_max:=90.0 ray_range_resolution:=0.01
+		horizontal_samples:=1920
+		horizontal_angle_min:=-0.674 horizontal_angle_max:=0.674
+		vertical_samples:=16
+		vertical_angle_min:=-0.523 vertical_angle_max:=0.523
+		xyz:='0 0 0' rpy:='0 0 0'
+		visualize:=true always_on:=true">
+
+		<!-- Gazebo 3D 激光雷达传感器插件 -->
+		<gazebo reference="${name}_link">
+			<pose>${xyz} ${rpy}</pose>
+			<sensor type="gpu_ray" name="${name}">
+				<pose>0 0 0 0 0 0</pose>
+
+				<!-- 更新频率 (Hz) -->
+				<update_rate>${update_rate}</update_rate>
+
+				<!-- 视觉和碰撞设置 -->
+				<always_on>${always_on}</always_on>
+				<visualize>${visualize}</visualize>
+
+				<!-- 3D 激光射线配置 (水平和垂直扫描) -->
+				<ray>
+					<scan>
+						<horizontal>
+							<samples>${horizontal_samples}</samples>
+							<resolution>1</resolution>
+							<min_angle>${horizontal_angle_min}</min_angle>
+							<max_angle>${horizontal_angle_max}</max_angle>
+						</horizontal>
+						<vertical>
+							<samples>${vertical_samples}</samples>
+							<resolution>1</resolution>
+							<min_angle>${vertical_angle_min}</min_angle>
+							<max_angle>${vertical_angle_max}</max_angle>
+						</vertical>
+					</scan>
+					<range>
+						<min>${ray_range_min}</min>
+						<max>${ray_range_max}</max>
+						<resolution>${ray_range_resolution}</resolution>
+					</range>
+					<noise>
+						<type>gaussian</type>
+						<mean>0.0</mean>
+						<stddev>0.01</stddev>
+					</noise>
+				</ray>
+
+				<!-- 插件配置 -->
+				<plugin name="${name}_plugin" filename="libgazebo_ros_ray_sensor.so">
+					<ros>
+						<namespace>/</namespace>
+						<remapping>~/out:=${topic_name}</remapping>
+					</ros>
+
+					<!-- 话题设置 -->
+					<topic_name>${topic_name}</topic_name>
+
+					<!-- 输出类型: 3D PointCloud2 -->
+					<output_type>sensor_msgs/PointCloud2</output_type>
+
+					<!-- 坐标系 -->
+					<frame_name>${name}_link</frame_name>
+				</plugin>
+			</sensor>
+		</gazebo>
+
+	</xacro:macro>
+
+	<!--
+	统一激光雷达宏 - 根据 laser_type 参数自动选择 2D 或 3D
+	laser_type:="2d" 或 laser_type:="3d"
+	-->
+	<xacro:macro name="laser_sensor" params="name parent
+		laser_type:='2d'
+		topic_name:='scan'
+		update_rate:=10
+		ray_count:=360
+		ray_range_min:=0.10 ray_range_max:=10.0 ray_range_resolution:=0.01
+		ray_angle_min:=-3.14159 ray_angle_max:=3.14159
+		horizontal_samples:=1920 horizontal_angle_min:=-0.674 horizontal_angle_max:=0.674
+		vertical_samples:=16 vertical_angle_min:=-0.523 vertical_angle_max:=0.523
+		xyz:='0 0 0' rpy:='0 0 0'
+		visualize:=true always_on:=true">
+
+		<!-- 根据 laser_type 选择对应的传感器宏 -->
+		<xacro:if value="${laser_type == '2d'}">
+			<xacro:laser_sensor_2d
+				name="${name}"
+				parent="${parent}"
+				topic_name="${topic_name}"
+				update_rate="${update_rate}"
+				ray_count="${ray_count}"
+				ray_range_min="${ray_range_min}"
+				ray_range_max="${ray_range_max}"
+				ray_range_resolution="${ray_range_resolution}"
+				ray_angle_min="${ray_angle_min}"
+				ray_angle_max="${ray_angle_max}"
+				xyz="${xyz}"
+				rpy="${rpy}"
+				visualize="${visualize}"
+				always_on="${always_on}"/>
+		</xacro:if>
+
+		<xacro:if value="${laser_type == '3d'}">
+			<xacro:laser_sensor_3d
+				name="${name}"
+				parent="${parent}"
+				topic_name="${topic_name}"
+				update_rate="${update_rate}"
+				ray_range_min="${ray_range_min}"
+				ray_range_max="${ray_range_max}"
+				ray_range_resolution="${ray_range_resolution}"
+				horizontal_samples="${horizontal_samples}"
+				horizontal_angle_min="${horizontal_angle_min}"
+				horizontal_angle_max="${horizontal_angle_max}"
+				vertical_samples="${vertical_samples}"
+				vertical_angle_min="${vertical_angle_min}"
+				vertical_angle_max="${vertical_angle_max}"
+				xyz="${xyz}"
+				rpy="${rpy}"
+				visualize="${visualize}"
+				always_on="${always_on}"/>
+		</xacro:if>
+
+	</xacro:macro>
+
+	<!--
+	简化版激光雷达插件宏 - 只包含必要参数
+	默认使用 2D 激光雷达
+	-->
+	<xacro:macro name="laser_sensor_simple" params="name parent laser_type:='2d' topic_name:='scan' update_rate:=10
 		ray_range_min:=0.10 ray_range_max:=10.0 xyz:='0 0 0' rpy:='0 0 0' always_on:=true">
 
-		<!-- 调用完整版宏，使用默认参数 -->
+		<!-- 调用统一宏 -->
 		<xacro:laser_sensor
 			name="${name}"
 			parent="${parent}"
+			laser_type="${laser_type}"
 			topic_name="${topic_name}"
 			update_rate="${update_rate}"
 			ray_range_min="${ray_range_min}"

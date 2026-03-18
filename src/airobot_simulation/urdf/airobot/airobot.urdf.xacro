@@ -30,11 +30,12 @@
 		camera_xyz: 摄像头相对于基座的安装位置(x,y,z,单位:米)
 		camera_type: 相机类型 (rgb: 普通相机, depth: 深度相机) (默认: rgb)
 		imu_xyz: IMU相对于基座的安装位置(x,y,z,单位:米)
+		laser_type: 激光雷达类型 (2d: 2D激光雷达, 3d: Livox 3D激光雷达) (默认: 2d)
 		laser_xyz: 激光雷达相对于基座的安装位置(x,y,z,单位:米)
 		laser_angle_min: 激光雷达最小扫描角度(弧度)
 		laser_angle_max: 激光雷达最大扫描角度(弧度)
 	-->
-	<xacro:macro name="airobot" params="base_length base_radius left_wheel_xyz right_wheel_xyz rear_caster_xyz front_caster_xyz camera_xyz camera_type imu_xyz laser_xyz laser_angle_min laser_angle_max">
+	<xacro:macro name="airobot" params="base_length base_radius left_wheel_xyz right_wheel_xyz rear_caster_xyz front_caster_xyz camera_xyz camera_type imu_xyz laser_type laser_xyz laser_angle_min laser_angle_max">
 		<!-- 基座足印链接(虚拟链接,用于确定机器人底部位置) -->
 		<link name="base_footprint"/>
 
@@ -74,12 +75,16 @@
 		<!-- 激光雷达传感器 -->
 		<xacro:laser name="laser" parent="base_link" xyz="${laser_xyz}"/>
 
+		<!-- 根据激光雷达类型设置不同的话题名称 -->
+		<xacro:property name="laser_topic" value="${'livox/lidar' if laser_type == '3d' else 'scan'}"/>
+
 		<!-- 激光雷达传感器插件 -->
-		<!-- 参数: name(传感器名称), parent(父链接), topic_name(发布话题名), update_rate(更新频率Hz), xyz(安装位置) -->
+		<!-- 参数: name(传感器名称), parent(父链接), laser_type(激光雷达类型), topic_name(发布话题名), update_rate(更新频率Hz), xyz(安装位置) -->
 		<xacro:laser_sensor
 			name="laser"
 			parent="base_link"
-			topic_name="scan"
+			laser_type="${laser_type}"
+			topic_name="${laser_topic}"
 			update_rate="10"
 			visualize="false"
 			ray_angle_min="${laser_angle_min}"
@@ -120,6 +125,7 @@
 	<xacro:arg name="camera_xyz" default="0.12 0.0 0.06"/>    <!-- 摄像头安装位置(x y z,单位:米) -->
 	<xacro:arg name="camera_type" default="depth"/>           <!-- 相机类型: rgb=普通相机, depth=深度相机 -->
 	<xacro:arg name="imu_xyz" default="0.0 0.0 0.03"/>       <!-- IMU安装位置(x y z,单位:米) -->
+	<xacro:arg name="laser_type" default="3d"/>           <!-- 激光雷达类型: 2d=2D激光雷达, 3d=Livox 3D激光雷达 -->
 	<xacro:arg name="laser_xyz" default="0.0 0.0 0.125"/>   <!-- 激光雷达安装位置(x y z,单位:米) -->
 	<!-- 激光雷达扫描角度参数 -->
 	<!-- 可选值: -->
@@ -139,6 +145,7 @@
 			camera_xyz="$(arg camera_xyz)"
 			camera_type="$(arg camera_type)"
 			imu_xyz="$(arg imu_xyz)"
+			laser_type="$(arg laser_type)"
 			laser_xyz="$(arg laser_xyz)"
 			laser_angle_min="$(arg laser_angle_min)"
 			laser_angle_max="$(arg laser_angle_max)"/>
